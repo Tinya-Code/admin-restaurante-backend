@@ -10,9 +10,11 @@ import { ProductsModule } from './modules/products/products.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { MenusModule } from './modules/menus/menus.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { StatisticsModule } from './modules/statistics/statistics.module';
+import { SearchModule } from './modules/search/search.module';
 
 @Module({
-  imports: [ConfigModule, DatabaseModule, FirebaseModule, CloudinaryModule, UsersModule, ProductsModule, CategoriesModule, MenusModule, SettingsModule],
+  imports: [ConfigModule, DatabaseModule, FirebaseModule, CloudinaryModule, UsersModule, ProductsModule, CategoriesModule, MenusModule, SettingsModule, StatisticsModule, SearchModule],
   controllers: [AppController],
   providers: [AppService],
 })

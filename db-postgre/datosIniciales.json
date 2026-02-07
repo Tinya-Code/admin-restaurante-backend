@@ -1,0 +1,76 @@
+{
+  "user": {
+    "id": "9d3a857f-8678-471e-ba35-923e21f3f691",
+    "email": "admin@example.com",
+    "phone": null,
+    "display_name": "Admin",
+    "photo_url": null,
+    "created_at": "2026-02-07T03:18:23.806013+00:00",
+    "updated_at": "2026-02-07T03:18:23.806013+00:00"
+  },
+  "restaurants": [
+    {
+      "restaurant": {
+        "id": "5a53d32f-834d-43df-a9ed-5db9b6badef9",
+        "name": "Mi Restaurante",
+        "slug": "mi-restaurante",
+        "owner_id": "9d3a857f-8678-471e-ba35-923e21f3f691",
+        "plan_id": null,
+        "template_id": null,
+        "phone": null,
+        "address": null,
+        "logo_url": null,
+        "is_active": true,
+        "created_at": "2026-02-07T03:18:23.806013+00:00",
+        "updated_at": "2026-02-07T03:18:23.806013+00:00"
+      },
+      "settings": null,
+      "plan": null,
+      "template": null,
+      "menus": [
+        {
+          "menu": {
+            "id": "e61d4b41-4813-4be1-93db-79373f563580",
+            "restaurant_id": "5a53d32f-834d-43df-a9ed-5db9b6badef9",
+            "name": "Menú Principal",
+            "description": null,
+            "is_active": true,
+            "display_order": 0,
+            "created_at": "2026-02-07T03:18:23.806013+00:00",
+            "updated_at": "2026-02-07T03:18:23.806013+00:00"
+          },
+          "categories": [
+            {
+              "category": {
+                "id": "239f1742-fc12-4f17-bf2a-bd955890582b",
+                "restaurant_id": "5a53d32f-834d-43df-a9ed-5db9b6badef9",
+                "menu_id": "e61d4b41-4813-4be1-93db-79373f563580",
+                "name": "Bebidas Calientes",
+                "description": null,
+                "display_order": 0,
+                "is_active": true,
+                "created_at": "2026-02-07T03:18:23.806013+00:00",
+                "updated_at": "2026-02-07T03:18:23.806013+00:00"
+              },
+              "products": [
+                {
+                  "id": "9c0b1132-c388-445d-8e47-08afe12a10ce",
+                  "restaurant_id": "5a53d32f-834d-43df-a9ed-5db9b6badef9",
+                  "category_id": "239f1742-fc12-4f17-bf2a-bd955890582b",
+                  "name": "Café Americano",
+                  "description": null,
+                  "price": 12.50,
+                  "image_url": null,
+                  "is_available": true,
+                  "display_order": 0,
+                  "created_at": "2026-02-07T03:18:23.806013+00:00",
+                  "updated_at": "2026-02-07T03:18:23.806013+00:00"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
