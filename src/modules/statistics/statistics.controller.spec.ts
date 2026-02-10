@@ -6,6 +6,7 @@ import { StatisticsService } from './statistics.service';
 describe('StatisticsController', () => {
   let controller: StatisticsController;
   let service: StatisticsService;
+  let loggerSpy: jest.SpyInstance;
 
   const mockRestaurantId = '550e8400-e29b-41d4-a716-446655440000';
   const mockInvalidRestaurantId = 'invalid-uuid';
@@ -27,6 +28,9 @@ describe('StatisticsController', () => {
 
     controller = module.get<StatisticsController>(StatisticsController);
     service = module.get<StatisticsService>(StatisticsService);
+
+    // Mock logger to suppress error messages during tests
+    loggerSpy = jest.spyOn(controller['logger'], 'error').mockImplementation();
   });
 
   it('should be defined', () => {
