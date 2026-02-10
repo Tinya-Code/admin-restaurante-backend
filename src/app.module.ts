@@ -14,6 +14,7 @@ import { StatisticsModule } from './modules/statistics/statistics.module';
 import { SearchModule } from './modules/search/search.module';
 
 @Module({
+  
   imports: [ConfigModule, DatabaseModule, FirebaseModule, CloudinaryModule, UsersModule, ProductsModule, CategoriesModule, MenusModule, SettingsModule, StatisticsModule, SearchModule],
   controllers: [AppController],
   providers: [AppService],
