@@ -7,7 +7,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
-import { ApiResponseDto } from '../../common/dto/api-response.dto/api-response.dto';
+import { ApiResponse as ApiResponseDto } from '../../common/dto/api-response.dto/api-response.dto';
 import { CategoriesCountResponseDto } from './dto/categories-count-response.dto';
 import { ProductsCountResponseDto } from './dto/products-count-response.dto';
 import { RecentProductsResponseDto } from './dto/recent-products-response.dto';
@@ -83,12 +83,10 @@ export class StatisticsController {
         query.restaurant_id,
       );
 
-      return {
-        status: 'success',
-        code: '200',
-        message: 'Products count retrieved successfully',
+           return new ApiResponseDto(
         data,
-      };
+        'Products count retrieved successfully',
+      );
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -148,12 +146,10 @@ export class StatisticsController {
         query.restaurant_id,
       );
 
-      return {
-        status: 'success',
-        code: '200',
-        message: 'Categories count retrieved successfully',
+      return new ApiResponseDto(
         data,
-      };
+        'Categories count retrieved successfully',
+      );
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
@@ -221,12 +217,10 @@ export class StatisticsController {
         query.limit,
       );
 
-      return {
-        status: 'success',
-        code: '200',
-        message: 'Recent products retrieved successfully',
+      return new ApiResponseDto(
         data,
-      };
+        'Recent products retrieved successfully',
+      );
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;

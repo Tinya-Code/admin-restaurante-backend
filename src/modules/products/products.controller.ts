@@ -35,7 +35,7 @@ import { Product } from './entities/product.entity';
 import { ApiResponse } from 'src/common/dto/api-response.dto/api-response.dto';
 
 @ApiTags('Products')
-@Controller('api/v1/products')
+@Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
   @Post()
