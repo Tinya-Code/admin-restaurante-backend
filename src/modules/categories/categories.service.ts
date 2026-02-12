@@ -1,26 +1,150 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
+import { DatabaseService } from '../../database/database.service';
+import { QueryCategoryDto } from './dto/create-category.dto';
+import { v4 as uuidv4 } from 'uuid';
+import { buildPaginationMeta } from '../../common/pagination.helper';
 
 @Injectable()
 export class CategoriesService {
-  create(createCategoryDto: CreateCategoryDto) {
-    return 'This action adds a new category';
+  constructor(private readonly db: DatabaseService) {}
+
+  private allowedSortBy = ['display_order', 'name', 'created_at'];
+
+  async create(dto: CreateCategoryDto): Promise<any> {
+    const exists = await (this.db.query(
+      'SELECT 1 FROM categories WHERE restaurant_id=$1 AND name=$2',
+      [dto.restaurant_id, dto.name],
+    ) as Promise<{ rowCount: number; rows: any[] }>);
+    if (exists.rowCount > 0) {
+      throw new HttpException(
+        'Category with that name already exists for the restaurant',
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    const id = uuidv4();
+    const now = new Date().toISOString();
+    const query = `INSERT INTO categories (id, restaurant_id, name, description, menu_id, display_order, is_active, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`;
+
+    const values: (string | number | boolean | null)[] = [
+      id,
+      dto.restaurant_id as string | number,
+      dto.name,
+      dto.description ?? null,
+      (dto.menu_id as string | number | null) ?? null,
+      (dto.display_order as number) ?? 0,
+      (dto.is_active as boolean) ?? true,
+      now,
+      now,
+    ] as const;
+    const res = await (this.db.query(query, values) as Promise<{
+      rowCount: number;
+      rows: any[];
+    }>);
+    return res.rows[0];
   }
 
-  findAll() {
-    return `This action returns all categories`;
+  async findAll(query: QueryCategoryDto) {
+    const {
+      restaurant_id,
+      menu_id,
+      is_active,
+      sort_by = 'display_order',
+      order,
+      page = 1,
+      limit = 10,
+    } = query;
+
+    const sortField = this.allowedSortBy.includes(sort_by)
+      ? sort_by
+      : 'display_order';
+    const sortOrder = order === 'DESC' ? 'DESC' : 'ASC';
+
+    let sql = 'SELECT * FROM categories WHERE restaurant_id=$1';
+    const params: any[] = [restaurant_id];
+
+    if (menu_id) {
+      params.push(menu_id);
+      sql += ` AND menu_id=$${params.length}`;
+    }
+    if (typeof is_active === 'boolean') {
+      params.push(is_active);
+      sql += ` AND is_active=$${params.length}`;
+    }
+
+    const countRes = await (this.db.query(
+      `SELECT COUNT(*)::int AS total FROM (${sql}) AS count_sub`,
+      params,
+    ) as Promise<{ rowCount: number; rows: Array<{ total: number }> }>);
+    const total = countRes.rows[0].total;
+
+    const offset = (page - 1) * limit;
+    sql += ` ORDER BY ${sortField} ${sortOrder} LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(limit, offset);
+
+    const data = await (this.db.query(sql, params) as Promise<{
+      rowCount: number;
+      rows: any[];
+    }>);
+    return { items: data.rows, meta: buildPaginationMeta(total, page, limit) };
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} category`;
+  async findOne(id: string): Promise<any> {
+    const res = await (this.db.query('SELECT * FROM categories WHERE id=$1', [
+      id,
+    ]) as Promise<{
+      rowCount: number;
+      rows: any[];
+    }>);
+    if (res.rowCount === 0) {
+      throw new HttpException('Category not found', HttpStatus.NOT_FOUND);
+    }
+    return res.rows[0];
   }
 
-  update(id: number, updateCategoryDto: UpdateCategoryDto) {
-    return `This action updates a #${id} category`;
-  }
+  async update(id: string, dto: UpdateCategoryDto) {
+    const current = await (this.db.query(
+      'SELECT * FROM categories WHERE id=$1',
+      [id],
+    ) as Promise<{
+      rowCount: number;
+      rows: any[];
+    }>);
+    if (current.rowCount === 0) {
+      throw new HttpException('Category not found', HttpStatus.NOT_FOUND);
+    }
 
-  remove(id: number) {
-    return `This action removes a #${id} category`;
+    const currentCategory = current.rows[0] as Record<string, any>;
+    if (dto.name && dto.name !== currentCategory?.name) {
+      const dup = await (this.db.query(
+        'SELECT 1 FROM categories WHERE restaurant_id=$1 AND name=$2 AND id!=$3',
+        [currentCategory?.restaurant_id, dto.name, id],
+      ) as Promise<{ rowCount: number; rows: any[] }>);
+      if (dup.rowCount > 0) {
+        throw new HttpException(
+          'Category name already in use',
+          HttpStatus.CONFLICT,
+        );
+      }
+    }
+
+    const fields: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+
+    for (const [key, value] of Object.entries(dto)) {
+      if (value !== undefined) {
+        fields.push(`${key}=$${idx++}`);
+        values.push(value);
+      }
+    }
+
+    if (fields.length > 0) {
+      const query = `UPDATE categories SET ${fields.join(', ')}, updated_at=NOW() WHERE id=$${idx}`;
+      values.push(id);
+      await this.db.query(query, values);
+    }
   }
 }
