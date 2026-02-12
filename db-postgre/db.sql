@@ -246,3 +246,5 @@ LEFT JOIN plans pl ON r.plan_id = pl.id
 LEFT JOIN templates t ON r.template_id = t.id
 GROUP BY u.id;
 
+
+
