@@ -147,4 +147,14 @@ export class CategoriesService {
       await this.db.query(query, values);
     }
   }
+
+  async remove(id: string): Promise<{ message: string }> {
+    // Verifica que exista
+    await this.findOne(id); // Esto ya lanza HttpException si no existe
+
+    // Elimina
+    await this.db.query('DELETE FROM categories WHERE id=$1', [id]);
+
+    return { message: 'Category deleted successfully' };
+  }
 }
