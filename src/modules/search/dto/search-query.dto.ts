@@ -6,6 +6,7 @@ export class SearchQueryDto {
   @IsNotEmpty({
     message: 'La palabra a buscar no puede estar vacía',
   })
+  @IsOptional()
   @MinLength(2, { message: 'La búsqueda debe tener al menos 2 caracteres' })
   @MaxLength(100, { message: 'La búsqueda no puede exceder 100 caracteres' })
   @Type(() => String)

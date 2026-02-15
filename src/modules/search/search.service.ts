@@ -5,18 +5,37 @@ import { SearchResultDto, SearchResultItemDto } from './dto/search-result.dto';
 @Injectable()
 export class SearchService {
   search(query: SearchQueryDto): SearchResultDto {
-    if (query.searchword) {
-      return this.extractByWord(query.searchword, query.categoria || 'todos');
+    // Caso 1: Sin parámetros → SELECT * FROM products
+    if (!query.searchword && !query.categoria) {
+      return this.getAllProducts();
     }
     
-    if (query.categoria) {
+    // Caso 2: Solo categoría → filtrar por categoría
+    if (!query.searchword && query.categoria) {
       return this.extractByCategory(query.categoria);
+    }
+    
+    // Caso 3: Solo keyword → búsqueda por palabra
+    if (query.searchword && !query.categoria) {
+      return this.extractByWord(query.searchword);
+    }
+    
+    // Caso 4: keyword + categoría → búsqueda con prioridad
+    if (query.searchword && query.categoria) {
+      return this.extractByWordWithCategory(query.searchword, query.categoria);
     }
     
     return this.createEmptyResponse();
   }
 
+  private getAllProducts(): SearchResultDto {
+    // TODO: Reemplazar con query a base de datos: SELECT * FROM products
+    const results = this.getMockData();
+    return this.createSearchResponse(results, '', 'todos');
+  }
+
   private extractByCategory(category: string): SearchResultDto {
+    // TODO: Reemplazar con query a base de datos: SELECT * FROM products WHERE category = ?
     const results = this.getMockData().filter(item => 
       item.category_name.toLowerCase() === category.toLowerCase()
     );
@@ -24,7 +43,17 @@ export class SearchService {
     return this.createSearchResponse(results, '', category);
   }
 
-  private extractByWord(word: string, category: string = 'todos'): SearchResultDto {
+  private extractByWord(word: string): SearchResultDto {
+    // TODO: Reemplazar con query a base de datos: SELECT * FROM products WHERE name LIKE ?
+    const results = this.getMockData().filter(item => 
+      item.name.toLowerCase().includes(word.toLowerCase())
+    );
+
+    return this.createSearchResponse(results, word, '');
+  }
+
+  private extractByWordWithCategory(word: string, category: string): SearchResultDto {
+    // TODO: Reemplazar con query a base de datos: SELECT * FROM products WHERE name LIKE ? ORDER BY CASE WHEN category = ? THEN 1 ELSE 2 END
     const results = this.getMockData().filter(item => 
       item.name.toLowerCase().includes(word.toLowerCase())
     );
@@ -43,7 +72,7 @@ export class SearchService {
 
     return this.createSearchResponse(results, word, category);
   }
-
+    // TODO: Funcion que retorna datos ejemplo de la base de datos
   private getMockData(): SearchResultItemDto[] {
     return [
       {

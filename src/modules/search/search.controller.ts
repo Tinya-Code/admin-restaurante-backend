@@ -8,7 +8,7 @@ import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 export class SearchController {
   constructor(private readonly searchService: SearchService) {}
 
-  @Get()
+  @Get('products')
   @UseGuards(JwtAuthGuard)
   search(
     @Query(new ValidationPipe({ transform: true }))
