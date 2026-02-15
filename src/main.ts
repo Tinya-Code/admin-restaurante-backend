@@ -1,6 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { AllExceptionsFilter } from './common/filters/all-exceptions/all-exceptions.filter';
+
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -13,6 +15,22 @@ async function bootstrap() {
   app.enableCors();
   const documentFactory = () => SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, documentFactory);
+  app.enableCors({
+    origin: (origin, callback) => {
+      const allowedOrigins = [
+        'http://localhost:4200','http://localhost:3000/api'
+      ];
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('No permitido por CORS'));
+      }
+    },
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
+  });
+
+  app.useGlobalFilters(new AllExceptionsFilter());
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();
