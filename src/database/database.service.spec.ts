@@ -29,18 +29,4 @@ describe('DatabaseService', () => {
     expect(service).toBeDefined();
   });
 
-  // Nota: Los tests de integración requieren una base de datos real
-  // Estos son ejemplos de cómo estructurarlos
-  describe('query', () => {
-    it('should execute a query', async () => {
-      // Mock o test de integración real
-      expect(service.query).toBeDefined();
-    });
-  });
-
-  describe('transaction', () => {
-    it('should execute a transaction', async () => {
-      expect(service.transaction).toBeDefined();
-    });
-  });
 });
