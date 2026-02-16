@@ -1,134 +1,176 @@
 import { Injectable } from '@nestjs/common';
 import { SearchQueryDto } from './dto/search-query.dto';
-import { SearchResultDto, SearchResultItemDto } from './dto/search-result.dto';
+import { SearchResultDto, SearchResultItemDto, PaginationMeta } from './dto/search-result.dto';
+import { DatabaseService } from '../../database/database.service';
 
 @Injectable()
 export class SearchService {
-  search(query: SearchQueryDto): SearchResultDto {
-    // Caso 1: Sin parámetros → SELECT * FROM products
+  constructor(private readonly databaseService: DatabaseService) {}
+
+  async search(query: SearchQueryDto): Promise<SearchResultDto> {
+    // Caso 1: Sin parámetros de búsqueda → Obtener todos los productos
     if (!query.searchword && !query.categoria) {
-      return this.getAllProducts();
+      return await this.getAllProducts(query.uuid);
     }
     
-    // Caso 2: Solo categoría → filtrar por categoría
+    // Caso 2: Solo categoría especificada → Filtrar productos por categoría
     if (!query.searchword && query.categoria) {
-      return this.extractByCategory(query.categoria);
+      return await this.extractByCategory(query.categoria, query.uuid);
     }
     
-    // Caso 3: Solo keyword → búsqueda por palabra
+    // Caso 3: Solo palabra clave → Buscar productos por nombre
     if (query.searchword && !query.categoria) {
-      return this.extractByWord(query.searchword);
+      return await this.extractByWord(query.searchword, query.uuid);
     }
     
-    // Caso 4: keyword + categoría → búsqueda con prioridad
+    // Caso 4: Palabra clave + categoría → Búsqueda combinada con prioridad
     if (query.searchword && query.categoria) {
-      return this.extractByWordWithCategory(query.searchword, query.categoria);
+      return await this.extractByWordWithCategory(query.searchword, query.categoria, query.uuid);
     }
     
     return this.createEmptyResponse();
   }
 
-  private getAllProducts(): SearchResultDto {
-    // TODO: Reemplazar con query a base de datos: SELECT * FROM products
-    const results = this.getMockData();
-    return this.createSearchResponse(results, '', 'todos');
+  // Caso 1: Obtener todos los productos
+  private async getAllProducts(uuid?: string): Promise<SearchResultDto> {
+    const sql = `
+      SELECT 
+        p.id,
+        c.name as category_name,
+        p.name,
+        p.description,
+        p.price,
+        p.image_url,
+        p.is_available,
+        p.created_at,
+        p.updated_at
+      FROM products p
+      JOIN categories c ON p.category_id = c.id
+      WHERE ($1::uuid IS NULL OR p.restaurant_id = $1)
+      ORDER BY p.display_order ASC, p.name ASC
+    `;
+
+    const result = await this.databaseService.query<SearchResultItemDto>(sql, [uuid || null]);
+    return this.createSearchResponse(result.rows, '', 'todos');
   }
 
-  private extractByCategory(category: string): SearchResultDto {
-    // TODO: Reemplazar con query a base de datos: SELECT * FROM products WHERE category = ?
-    const results = this.getMockData().filter(item => 
-      item.category_name.toLowerCase() === category.toLowerCase()
-    );
+  // Caso 2: Filtrar por categoría
+  private async extractByCategory(category: string, uuid?: string): Promise<SearchResultDto> {
+    const sql = `
+      SELECT 
+        p.id,
+        c.name as category_name,
+        p.name,
+        p.description,
+        p.price,
+        p.image_url,
+        p.is_available,
+        p.created_at,
+        p.updated_at
+      FROM products p
+      JOIN categories c ON p.category_id = c.id
+      WHERE 
+        c.name ILIKE $1
+        AND ($2::uuid IS NULL OR p.restaurant_id = $2)
+      ORDER BY p.display_order ASC, p.name ASC
+    `;
 
-    return this.createSearchResponse(results, '', category);
+    const result = await this.databaseService.query<SearchResultItemDto>(sql, [
+      `%${category}%`,       // $1 - búsqueda parcial de categoría
+      uuid || null           // $2 - filtro por restaurante (opcional)
+    ]);
+    return this.createSearchResponse(result.rows, '', category);
   }
 
-  private extractByWord(word: string): SearchResultDto {
-    // TODO: Reemplazar con query a base de datos: SELECT * FROM products WHERE name LIKE ?
-    const results = this.getMockData().filter(item => 
-      item.name.toLowerCase().includes(word.toLowerCase())
-    );
+  // Caso 3: Búsqueda por palabra clave
+  private async extractByWord(word: string, uuid?: string): Promise<SearchResultDto> {
+    const sql = `
+      SELECT 
+        p.id,
+        c.name as category_name,
+        p.name,
+        p.description,
+        p.price,
+        p.image_url,
+        p.is_available,
+        p.created_at,
+        p.updated_at
+      FROM products p
+      JOIN categories c ON p.category_id = c.id
+      WHERE 
+        p.name ILIKE $1
+        AND ($2::uuid IS NULL OR p.restaurant_id = $2)
+      ORDER BY 
+        CASE 
+          WHEN p.name ILIKE $3 THEN 1  -- Coincidencia exacta del producto
+          WHEN p.name ILIKE $4 THEN 2  -- Producto que empieza con la palabra
+          ELSE 3                       -- Producto que contiene la palabra
+        END,
+        p.display_order ASC,
+        p.name ASC
+    `;
 
-    return this.createSearchResponse(results, word, '');
+    const result = await this.databaseService.query<SearchResultItemDto>(sql, [
+      `%${word}%`,           // $1 - búsqueda parcial del producto
+      uuid || null,          // $2 - filtro por restaurante (opcional)
+      word,                  // $3 - coincidencia exacta del producto
+      `${word}%`             // $4 - producto que empieza con la palabra
+    ]);
+    return this.createSearchResponse(result.rows, word, '');
   }
 
-  private extractByWordWithCategory(word: string, category: string): SearchResultDto {
-    // TODO: Reemplazar con query a base de datos: SELECT * FROM products WHERE name LIKE ? ORDER BY CASE WHEN category = ? THEN 1 ELSE 2 END
-    const results = this.getMockData().filter(item => 
-      item.name.toLowerCase().includes(word.toLowerCase())
-    );
+  // Caso 4: Búsqueda por palabra + categoría (con prioridad)
+  private async extractByWordWithCategory(word: string, category: string, uuid?: string): Promise<SearchResultDto> {
+    const sql = `
+      SELECT 
+        p.id,
+        c.name as category_name,
+        p.name,
+        p.description,
+        p.price,
+        p.image_url,
+        p.is_available,
+        p.created_at,
+        p.updated_at
+      FROM products p
+      JOIN categories c ON p.category_id = c.id
+      WHERE 
+        p.name ILIKE $1
+        AND c.name ILIKE $2
+        AND ($3::uuid IS NULL OR p.restaurant_id = $3)
+      ORDER BY 
+        CASE 
+          WHEN c.name ILIKE $4 THEN 1  -- Prioridad: categoría coincide exacto
+          ELSE 2                       -- Categoría coincide parcialmente
+        END,
+        CASE 
+          WHEN p.name ILIKE $5 THEN 1  -- Prioridad: producto coincide exacto
+          WHEN p.name ILIKE $6 THEN 2  -- Producto empieza con la palabra
+          ELSE 3                       -- Producto contiene la palabra
+        END,
+        p.display_order ASC,
+        p.name ASC
+    `;
 
-    // Si se especifica categoría, ordenar poniendo primero los que coinciden
-    if (category !== 'todos') {
-      results.sort((a, b) => {
-        const aHasCategory = a.category_name.toLowerCase() === category.toLowerCase();
-        const bHasCategory = b.category_name.toLowerCase() === category.toLowerCase();
-        
-        if (aHasCategory && !bHasCategory) return -1;
-        if (!aHasCategory && bHasCategory) return 1;
-        return 0;
-      });
-    }
-
-    return this.createSearchResponse(results, word, category);
-  }
-    // TODO: Funcion que retorna datos ejemplo de la base de datos
-  private getMockData(): SearchResultItemDto[] {
-    return [
-      {
-        id: '1',
-        category_name: 'bebidas',
-        name: 'Coca Cola',
-        description: 'Bebida gaseosa refrescante',
-        price: 15,
-        image_url: 'https://example.com/coca-cola.jpg',
-        is_available: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      {
-        id: '2',
-        category_name: 'comidas',
-        name: 'Hamburguesa',
-        description: 'Hamburguesa con queso y vegetales',
-        price: 45,
-        image_url: 'https://example.com/hamburguesa.jpg',
-        is_available: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      {
-        id: '3',
-        category_name: 'bebidas',
-        name: 'Jugo de Naranja',
-        description: 'Jugo natural de naranja',
-        price: 12,
-        image_url: 'https://example.com/jugo-naranja.jpg',
-        is_available: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      {
-        id: '4',
-        category_name: 'postres',
-        name: 'Tiramisú',
-        description: 'Postre italiano clásico',
-        price: 25,
-        image_url: 'https://example.com/tiramisu.jpg',
-        is_available: false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-    ];
+    const result = await this.databaseService.query<SearchResultItemDto>(sql, [
+      `%${word}%`,           // $1 - búsqueda parcial del producto
+      `%${category}%`,       // $2 - búsqueda parcial de la categoría
+      uuid || null,          // $3 - filtro por restaurante (opcional)
+      category,              // $4 - coincidencia exacta de categoría
+      word,                  // $5 - coincidencia exacta del producto
+      `${word}%`             // $6 - producto que empieza con la palabra
+    ]);
+    return this.createSearchResponse(result.rows, word, category);
   }
 
+  // Métodos auxiliares para crear respuestas
   private createSearchResponse(results: SearchResultItemDto[], searchWord: string, category: string): SearchResultDto {
     const page = 1;
     const limit = 10;
     const totalItems = results.length;
     const totalPages = Math.ceil(totalItems / limit);
 
-    const meta = {
+    const meta: PaginationMeta = {
       limit,
       current_page: page,
       total_pages: totalPages,
@@ -136,7 +178,7 @@ export class SearchService {
       has_next: page < totalPages,
       has_prev: page > 1,
       order_by: 'name',
-      sortDirection: 'ASC' as const,
+      sortDirection: 'ASC',
     };
 
     return {
