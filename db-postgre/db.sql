@@ -161,3 +161,90 @@ CREATE INDEX idx_products_is_available ON products (is_available) WHERE is_avail
 CREATE INDEX idx_products_display_order ON products (category_id, display_order);
 CREATE INDEX idx_products_price ON products (price);
 CREATE INDEX idx_products_created_at ON products (created_at);
+
+-- 1. Crear un usuario
+INSERT INTO users (id, email, display_name, created_at, updated_at)
+VALUES (gen_random_uuid(), 'admin@example.com', 'Admin', now(), now());
+
+-- 2. Crear un restaurante
+INSERT INTO restaurants (id, name, slug, owner_id, created_at, updated_at)
+VALUES (gen_random_uuid(), 'Mi Restaurante', 'mi-restaurante', 
+        (SELECT id FROM users LIMIT 1), now(), now());
+
+-- 3. Crear un menú
+INSERT INTO menus (id, restaurant_id, name, created_at, updated_at)
+VALUES (gen_random_uuid(), (SELECT id FROM restaurants LIMIT 1), 
+        'Menú Principal', now(), now());
+
+-- 4. Crear una categoría
+INSERT INTO categories (id, restaurant_id, menu_id, name, created_at, updated_at)
+VALUES (gen_random_uuid(), (SELECT id FROM restaurants LIMIT 1), 
+        (SELECT id FROM menus LIMIT 1), 'Bebidas Calientes', now(), now());
+
+-- 5. Crear un producto
+INSERT INTO products (id, restaurant_id, category_id, name, price, created_at, updated_at)
+VALUES (gen_random_uuid(), (SELECT id FROM restaurants LIMIT 1), 
+        (SELECT id FROM categories LIMIT 1), 'Café Americano', 12.50, now(), now());
+
+SELECT 
+    u.email,
+    r.name AS restaurant_name,
+    m.name AS menu_name,
+    c.name AS category_name,
+    p.name AS product_name,
+    p.price
+FROM users u
+JOIN restaurants r ON r.owner_id = u.id
+JOIN menus m ON m.restaurant_id = r.id
+JOIN categories c ON c.menu_id = m.id
+JOIN products p ON p.category_id = c.id;
+
+SELECT * FROM users;
+SELECT * FROM restaurants;
+SELECT * FROM menus;
+SELECT * FROM categories;
+SELECT * FROM products;
+
+SELECT json_build_object(
+  'user', u,
+  'restaurants', json_agg(
+    json_build_object(
+      'restaurant', r,
+      'settings', rs,
+      'plan', pl,
+      'template', t,
+      'menus', (
+        SELECT json_agg(
+          json_build_object(
+            'menu', m,
+            'categories', (
+              SELECT json_agg(
+                json_build_object(
+                  'category', c,
+                  'products', (
+                    SELECT json_agg(p)
+                    FROM products p
+                    WHERE p.category_id = c.id
+                  )
+                )
+              )
+              FROM categories c
+              WHERE c.menu_id = m.id
+            )
+          )
+        )
+        FROM menus m
+        WHERE m.restaurant_id = r.id
+      )
+    )
+  )
+) AS full_data
+FROM users u
+LEFT JOIN restaurants r ON r.owner_id = u.id
+LEFT JOIN restaurant_settings rs ON rs.restaurant_id = r.id
+LEFT JOIN plans pl ON r.plan_id = pl.id
+LEFT JOIN templates t ON r.template_id = t.id
+GROUP BY u.id;
+
+
+
