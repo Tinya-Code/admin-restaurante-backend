@@ -24,9 +24,6 @@ export class PaginationMetaDto {
 
   @ApiProperty({ example: 'ASC', enum: ['ASC', 'DESC'], required: false })
   sort_direction?: 'ASC' | 'DESC';
-<<<<<<< HEAD
-}
-=======
 
   constructor(
     page: number,
@@ -45,4 +42,3 @@ export class PaginationMetaDto {
     this.sort_direction = sortDirection;
   }
 }
->>>>>>> 290350ee9b19b72400dd18e28db2004c14da7fa0
