@@ -1,4 +1,5 @@
-import { IsString, IsNumber, IsArray, IsOptional, IsBoolean } from 'class-validator';
+import { IsString, IsNumber, IsArray, IsOptional, IsBoolean, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class SearchResultItemDto {
   @IsString()
@@ -60,7 +61,9 @@ export class SearchResultDto {
   @IsArray()
   data: SearchResultItemDto[];
 
-  @IsNumber()
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => PaginationMeta)
   meta: PaginationMeta | null;
 
   @IsString()

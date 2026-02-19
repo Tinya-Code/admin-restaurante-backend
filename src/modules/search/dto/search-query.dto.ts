@@ -16,7 +16,7 @@ export class SearchQueryDto {
   @IsString()
   @MinLength(4, { message: 'El ID de la tienda debe tener al menos 4 caracteres' })
   @MaxLength(36, { message: 'El ID de la tienda no puede exceder 36 caracteres' })
-  uuid?: string; // UUID de la tienda
+  userUuid?: string; // UUID de la tienda
 
   @IsOptional()
   @IsString()

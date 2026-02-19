@@ -4,6 +4,7 @@ import { Request } from 'express';
 
 interface AuthenticatedRequest extends Request {
   userUid?: string;
+  userUuid?: string;
 }
 
 @Injectable()
@@ -13,9 +14,14 @@ export class JwtAuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const authHeader = request.headers['authorization'];
+    const userUuidHeader = request.headers['x-user-uuid'];
 
     if (!authHeader) {
       throw new UnauthorizedException('Token no proporcionado');
+    }
+
+    if (!userUuidHeader) {
+      throw new UnauthorizedException('UUID de usuario no proporcionado en header x-user-uuid');
     }
 
     // Extraer el token del header "Bearer token"
@@ -29,13 +35,17 @@ export class JwtAuthGuard implements CanActivate {
       if (token === 'test-token-123') {
         console.log('🔓 Modo desarrollo: usando token de prueba');
         request.userUid = 'test-user-123';
+        request.userUuid = userUuidHeader as string;
         return true;
       }
       
       const decodedToken = await this.firebaseService.verifyToken(token);
       // El UID viene del token de Firebase
       request.userUid = decodedToken.uid;
+      // El UUID viene del header (PostgreSQL)
+      request.userUuid = userUuidHeader as string;
       console.log('✅ Usuario autenticado:', decodedToken.uid);
+      console.log('🆔 UUID PostgreSQL:', userUuidHeader);
       return true;
     } catch (error) {
       throw new UnauthorizedException('Token inválido o expirado');
