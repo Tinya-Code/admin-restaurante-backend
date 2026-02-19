@@ -3,7 +3,6 @@ import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { DatabaseService } from '../../database/database.service';
 import { QueryCategoryDto } from './dto/query-category.dto';
-import { v4 as uuidv4 } from 'uuid';
 import { buildPaginationMeta } from '../../common/pagination.helper';
 
 @Injectable()
@@ -25,26 +24,20 @@ export class CategoriesService {
       );
     }
 
-    const id = uuidv4();
-    const now = new Date().toISOString();
-
     const query = `
       INSERT INTO categories 
-      (id, restaurant_id, name, description, menu_id, display_order, is_active, created_at, updated_at)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      (restaurant_id, menu_id, name, description, display_order, is_active)
+      VALUES ($1,$2,$3,$4,$5,$6)
       RETURNING *;
     `;
 
     const values: (string | number | boolean | null)[] = [
-      id,
-      dto.restaurant_id as string | number,
+      dto.restaurant_id,
+      dto.menu_id ?? null,
       dto.name,
       dto.description ?? null,
-      (dto.menu_id as string | number | null) ?? null,
-      (dto.display_order as number) ?? 0,
-      (dto.is_active as boolean) ?? true,
-      now,
-      now,
+      dto.display_order ?? 0,
+      dto.is_active ?? true,
     ];
 
     const res = await (this.db.query(query, values) as Promise<{
@@ -114,7 +107,7 @@ export class CategoriesService {
     return res.rows[0];
   }
 
-  async update(id: string, dto: UpdateCategoryDto): Promise<void> {
+  async update(id: string, dto: UpdateCategoryDto): Promise<any> {
     const current = await (this.db.query(
       'SELECT * FROM categories WHERE id=$1',
       [id],
@@ -152,10 +145,13 @@ export class CategoriesService {
     }
 
     if (fields.length > 0) {
-      const query = `UPDATE categories SET ${fields.join(', ')}, updated_at=NOW() WHERE id=$${idx}`;
+      const query = `UPDATE categories SET ${fields.join(', ')}, updated_at=NOW() WHERE id=$${idx} RETURNING *`;
       values.push(id);
-      await this.db.query(query, values);
+      const res = await this.db.query(query, values) as any;
+      return res.rows[0];
     }
+
+    return current.rows[0];
   }
 
   async remove(id: string): Promise<{ message: string }> {
