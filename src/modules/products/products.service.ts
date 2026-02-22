@@ -159,7 +159,7 @@ export class ProductsService {
     `;
 
     const countResult = await this.databaseService.query(countQuery, values);
-    const total = parseInt(countResult.rows[0].total, 10);
+    const total = parseInt((countResult.rows[0] as { total: string }).total, 10);
 
     // Data query con ordenamiento seguro
     const offset = (page - 1) * limit;

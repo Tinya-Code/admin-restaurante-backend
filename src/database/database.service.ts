@@ -1,5 +1,5 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
-import { Pool, PoolClient, QueryResult } from 'pg';
+import { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
 import { ConfigService } from '../config/config.service';
 
 @Injectable()
@@ -50,7 +50,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     this.logger.log('🔌 Database connection closed');
   }
 
-  async query<T = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
+  async query<T extends QueryResultRow = any>(text: string, params?: unknown[]): Promise<QueryResult<T>> {
     const start = Date.now();
     try {
       const result = await this.pool.query<T>(text, params);
@@ -82,7 +82,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async findOne<T = any>(table: string, conditions: Record<string, any>): Promise<T | null> {
+  async findOne<T extends QueryResultRow = any>(table: string, conditions: Record<string, unknown>): Promise<T | null> {
     const keys = Object.keys(conditions);
     const values = Object.values(conditions);
     const whereClause = keys.map((key, i) => `${key} = $${i + 1}`).join(' AND ');
@@ -95,7 +95,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     return result.rows[0] || null;
   }
 
-  async findAll<T = any>(table: string, conditions?: Record<string, any>): Promise<T[]> {
+  async findAll<T extends QueryResultRow = any>(table: string, conditions?: Record<string, unknown>): Promise<T[]> {
     if (!conditions || Object.keys(conditions).length === 0) {
       const result = await this.query<T>(`SELECT * FROM ${table}`);
       return result.rows;
@@ -113,7 +113,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     return result.rows;
   }
 
-  async insert<T = any>(table: string, data: Record<string, any>): Promise<T> {
+  async insert<T extends QueryResultRow = any>(table: string, data: Record<string, unknown>): Promise<T> {
     const keys = Object.keys(data);
     const values = Object.values(data);
     const columns = keys.join(', ');
@@ -127,7 +127,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     return result.rows[0];
   }
 
-  async update<T = any>(table: string, id: string | number, data: Record<string, any>): Promise<T> {
+  async update<T extends QueryResultRow = any>(table: string, id: string | number, data: Record<string, unknown>): Promise<T> {
     const keys = Object.keys(data);
     const values = Object.values(data);
     const setClause = keys.map((key, i) => `${key} = $${i + 1}`).join(', ');
@@ -146,6 +146,6 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       [id],
     );
 
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 }

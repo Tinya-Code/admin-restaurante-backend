@@ -8,30 +8,37 @@ export class SearchService {
   constructor(private readonly databaseService: DatabaseService) {}
 
   async search(query: SearchQueryDto, userUuid?: string): Promise<SearchResultDto> {
+    console.log('🔍 Search request received:', query);
+    
     // extraermos page y limit del query
     const page = query.page || 1;
     const limit = query.limit || 10;
 
     // Caso 1: Sin parámetros de búsqueda → Obtener todos los productos
     if (!query.searchword && !query.categoria) {
+      console.log('📋 Case 1: Get all products');
       return await this.getAllProducts(userUuid, page, limit);
     }
     
     // Caso 2: Solo categoría especificada → Filtrar productos por categoría
     if (!query.searchword && query.categoria) {
+      console.log('📋 Case 2: Filter by category:', query.categoria);
       return await this.extractByCategory(query.categoria, userUuid, page, limit);
     }
     
     // Caso 3: Solo palabra clave → Buscar productos por nombre
     if (query.searchword && !query.categoria) {
+      console.log('📋 Case 3: Search by word:', query.searchword);
       return await this.extractByWord(query.searchword, userUuid, page, limit);
     }
     
     // Caso 4: Palabra clave + categoría → Búsqueda combinada con prioridad
     if (query.searchword && query.categoria) {
+      console.log('📋 Case 4: Search by word + category:', query.searchword, query.categoria);
       return await this.extractByWordWithCategory(query.searchword, query.categoria, userUuid, page, limit);
     }
     
+    console.log('📋 Case 5: Empty response');
     return this.createEmptyResponse();
   }
 
