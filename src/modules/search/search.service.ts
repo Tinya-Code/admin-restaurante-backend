@@ -1,13 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { SearchQueryDto } from './dto/search-query.dto';
 import { SearchResultDto, SearchResultItemDto, PaginationMeta } from './dto/search-result.dto';
+import { ApiResponse } from '../../common/dto/api-response.dto/api-response.dto';
+import { PaginationMetaDto } from '../../common/dto/pagination-meta.dto/pagination-meta.dto';
 import { DatabaseService } from '../../database/database.service';
 
 @Injectable()
 export class SearchService {
   constructor(private readonly databaseService: DatabaseService) {}
 
-  async search(query: SearchQueryDto, userUuid?: string): Promise<SearchResultDto> {
+  async search(query: SearchQueryDto, userUuid?: string): Promise<ApiResponse<SearchResultItemDto[]>> {
     console.log('🔍 Search request received:', query);
     
     // extraermos page y limit del query
@@ -43,7 +45,7 @@ export class SearchService {
   }
 
   // Caso 1: Obtener todos los productos
-  private async getAllProducts(uuid?: string, page: number = 1, limit: number = 10): Promise<SearchResultDto> {
+  private async getAllProducts(uuid?: string, page: number = 1, limit: number = 10): Promise<ApiResponse<SearchResultItemDto[]>> {
     const offset = (page - 1) * limit;
     
     // Count query
@@ -81,7 +83,7 @@ export class SearchService {
   }
 
   // Caso 2: Filtrar por categoría
-  private async extractByCategory(category: string, uuid?: string, page: number = 1, limit: number = 10): Promise<SearchResultDto> {
+  private async extractByCategory(category: string, uuid?: string, page: number = 1, limit: number = 10): Promise<ApiResponse<SearchResultItemDto[]>> {
     const offset = (page - 1) * limit;
     
     // Count query
@@ -131,7 +133,7 @@ export class SearchService {
   }
 
   // Caso 3: Búsqueda por palabra clave
-  private async extractByWord(word: string, uuid?: string, page: number = 1, limit: number = 10): Promise<SearchResultDto> {
+  private async extractByWord(word: string, uuid?: string, page: number = 1, limit: number = 10): Promise<ApiResponse<SearchResultItemDto[]>> {
     const offset = (page - 1) * limit;
     
     // Count query
@@ -190,7 +192,7 @@ export class SearchService {
   }
 
   // Caso 4: Búsqueda por palabra + categoría (con prioridad)
-  private async extractByWordWithCategory(word: string, category: string, uuid?: string, page: number = 1, limit: number = 10): Promise<SearchResultDto> {
+  private async extractByWordWithCategory(word: string, category: string, uuid?: string, page: number = 1, limit: number = 10): Promise<ApiResponse<SearchResultItemDto[]>> {
     const offset = (page - 1) * limit;
     
     // Count query
@@ -265,37 +267,33 @@ export class SearchService {
     page: number = 1, 
     limit: number = 10, 
     totalItems?: number
-  ): SearchResultDto {
+  ): ApiResponse<SearchResultItemDto[]> {
     const actualTotalItems = totalItems !== undefined ? totalItems : results.length;
     const totalPages = Math.ceil(actualTotalItems / limit);
 
-    const meta: PaginationMeta = {
+    const meta = new PaginationMetaDto(
+      page,
       limit,
-      current_page: page,
-      total_pages: totalPages,
-      total_items: actualTotalItems,
-      has_next: page < totalPages,
-      has_prev: page > 1,
-      order_by: 'name',
-      sortDirection: 'ASC',
-    };
+      actualTotalItems,
+      'name',
+      'ASC'
+    );
 
-    return {
-      status: 'success',
-      code: 200,
-      data: results,
-      meta,
-      error: '',
-    };
+    const message = `Búsqueda ${searchWord ? `de "${searchWord}"` : ''} ${category ? `en categoría "${category}"` : ''}`.trim() || 'Resultados de búsqueda';
+
+    return new ApiResponse<SearchResultItemDto[]>(
+      results,
+      message,
+      meta
+    );
   }
 
-  private createEmptyResponse(): SearchResultDto {
-    return {
-      status: 'success',
-      code: 200,
-      data: [],
-      meta: null,
-      error: '',
-    };
+  private createEmptyResponse(): ApiResponse<SearchResultItemDto[]> {
+    const meta = new PaginationMetaDto(1, 10, 0, 'name', 'ASC');
+    return new ApiResponse<SearchResultItemDto[]>(
+      [],
+      'No se encontraron resultados',
+      meta
+    );
   }
 }

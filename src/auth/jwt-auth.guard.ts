@@ -12,34 +12,31 @@ export class JwtAuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    const authHeader = request.headers['authorization'];
-    const userUuidHeader = request.headers['x-user-uuid'];
+    const authHeader = request.headers['Authorization'] as string;
 
     if (!authHeader) {
       throw new UnauthorizedException('Token no proporcionado');
     }
 
-    if (!userUuidHeader) {
-      throw new UnauthorizedException('UUID de usuario no proporcionado en header x-user-uuid');
-    }
-
     // Extraer el token del header "Bearer token"
     const token = this.extractTokenFromHeader(authHeader);
+    
     if (!token) {
       throw new UnauthorizedException('Formato de token inválido');
     }
-
+    
     try {
       // MODO DESARROLLO: Permitir token de prueba
       if (token === 'test-token-123') {
         console.log('🔓 Modo desarrollo: usando token de prueba');
-        request.userUuid = userUuidHeader as string;
+        // En desarrollo, usar un UUID de prueba existente en la BD
+        request.userUuid = '5a53d32f-834d-43df-a9ed-5db9b6badef9';
         return true;
       }
       
       const decodedToken = await this.firebaseService.verifyToken(token);
-      // El UUID viene del header (PostgreSQL) - el de Firebase no lo usamos para buscar
-      request.userUuid = userUuidHeader as string;
+      // El UID viene del token de Firebase (no del header)
+      request.userUuid = decodedToken.uid;
       console.log('✅ Usuario autenticado:', decodedToken.uid);
       console.log('🆔 UUID PostgreSQL:', request.userUuid);
       return true;
