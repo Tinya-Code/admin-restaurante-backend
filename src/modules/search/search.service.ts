@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { SearchQueryDto } from './dto/search-query.dto';
 import { SearchResultDto, SearchResultItemDto, PaginationMeta } from './dto/search-result.dto';
 import { ApiResponse } from '../../common/dto/api-response.dto/api-response.dto';
@@ -9,9 +9,10 @@ import { DatabaseService } from '../../database/database.service';
 export class SearchService {
   constructor(private readonly databaseService: DatabaseService) {}
 
-  async search(query: SearchQueryDto, userUuid?: string): Promise<ApiResponse<SearchResultItemDto[]>> {
-    console.log('🔍 Search request received:', query);
-    
+  async search(query: SearchQueryDto): Promise<ApiResponse<SearchResultItemDto[]>> {
+
+    // Extraemos userUuid del query
+    const userUuid = query.userUuid;
     // extraermos page y limit del query
     const page = query.page || 1;
     const limit = query.limit || 10;
@@ -19,25 +20,25 @@ export class SearchService {
     // Caso 1: Sin parámetros de búsqueda → Obtener todos los productos
     if (!query.searchword && !query.categoria) {
       console.log('📋 Case 1: Get all products');
-      return await this.getAllProducts(userUuid, page, limit);
+      return await this.getAllProducts(userUuid!, page, limit);
     }
     
     // Caso 2: Solo categoría especificada → Filtrar productos por categoría
     if (!query.searchword && query.categoria) {
       console.log('📋 Case 2: Filter by category:', query.categoria);
-      return await this.extractByCategory(query.categoria, userUuid, page, limit);
+      return await this.extractByCategory(query.categoria, userUuid!, page, limit);
     }
     
     // Caso 3: Solo palabra clave → Buscar productos por nombre
     if (query.searchword && !query.categoria) {
       console.log('📋 Case 3: Search by word:', query.searchword);
-      return await this.extractByWord(query.searchword, userUuid, page, limit);
+      return await this.extractByWord(query.searchword, userUuid!, page, limit);
     }
     
     // Caso 4: Palabra clave + categoría → Búsqueda combinada con prioridad
     if (query.searchword && query.categoria) {
       console.log('📋 Case 4: Search by word + category:', query.searchword, query.categoria);
-      return await this.extractByWordWithCategory(query.searchword, query.categoria, userUuid, page, limit);
+      return await this.extractByWordWithCategory(query.searchword, query.categoria, userUuid!, page, limit);
     }
     
     console.log('📋 Case 5: Empty response');
@@ -45,7 +46,7 @@ export class SearchService {
   }
 
   // Caso 1: Obtener todos los productos
-  private async getAllProducts(uuid?: string, page: number = 1, limit: number = 10): Promise<ApiResponse<SearchResultItemDto[]>> {
+  private async getAllProducts(uuid: string, page: number = 1, limit: number = 10): Promise<ApiResponse<SearchResultItemDto[]>> {
     const offset = (page - 1) * limit;
     
     // Count query
@@ -53,10 +54,10 @@ export class SearchService {
       SELECT COUNT(*) as total
       FROM products p
       JOIN categories c ON p.category_id = c.id
-      WHERE ($1::uuid IS NULL OR p.restaurant_id = $1)
+      WHERE p.restaurant_id = $1
     `;
     
-    const countResult = await this.databaseService.query<{total: string}>(countSql, [uuid || null]);
+    const countResult = await this.databaseService.query<{total: string}>(countSql, [uuid]);
     const totalItems = parseInt(countResult.rows[0].total, 10);
     
     // Data query con paginación
@@ -73,17 +74,17 @@ export class SearchService {
         p.updated_at
       FROM products p
       JOIN categories c ON p.category_id = c.id
-      WHERE ($1::uuid IS NULL OR p.restaurant_id = $1)
+      WHERE p.restaurant_id = $1
       ORDER BY p.display_order ASC, p.name ASC
       LIMIT $2 OFFSET $3
     `;
 
-    const result = await this.databaseService.query<SearchResultItemDto>(sql, [uuid || null, limit, offset]);
+    const result = await this.databaseService.query<SearchResultItemDto>(sql, [uuid, limit, offset]);
     return this.createSearchResponse(result.rows as SearchResultItemDto[], '', 'todos', page, limit, totalItems);
   }
 
   // Caso 2: Filtrar por categoría
-  private async extractByCategory(category: string, uuid?: string, page: number = 1, limit: number = 10): Promise<ApiResponse<SearchResultItemDto[]>> {
+  private async extractByCategory(category: string, uuid: string, page: number = 1, limit: number = 10): Promise<ApiResponse<SearchResultItemDto[]>> {
     const offset = (page - 1) * limit;
     
     // Count query
@@ -93,12 +94,12 @@ export class SearchService {
       JOIN categories c ON p.category_id = c.id
       WHERE 
         c.name ILIKE $1
-        AND ($2::uuid IS NULL OR p.restaurant_id = $2)
+        AND p.restaurant_id = $2
     `;
     
     const countResult = await this.databaseService.query<{total: string}>(countSql, [
       `%${category}%`,
-      uuid || null
+      uuid
     ]);
     const totalItems = parseInt(countResult.rows[0].total, 10);
     
@@ -118,14 +119,14 @@ export class SearchService {
       JOIN categories c ON p.category_id = c.id
       WHERE 
         c.name ILIKE $1
-        AND ($2::uuid IS NULL OR p.restaurant_id = $2)
+        AND p.restaurant_id = $2
       ORDER BY p.display_order ASC, p.name ASC
       LIMIT $3 OFFSET $4
     `;
 
     const result = await this.databaseService.query<SearchResultItemDto>(sql, [
       `%${category}%`,       // $1 - búsqueda parcial de categoría
-      uuid || null,          // $2 - filtro por restaurante (opcional)
+      uuid,                  // $2 - filtro por restaurante
       limit,                 // $3 - límite de resultados
       offset                 // $4 - offset para paginación
     ]);
@@ -133,7 +134,7 @@ export class SearchService {
   }
 
   // Caso 3: Búsqueda por palabra clave
-  private async extractByWord(word: string, uuid?: string, page: number = 1, limit: number = 10): Promise<ApiResponse<SearchResultItemDto[]>> {
+  private async extractByWord(word: string, uuid: string, page: number = 1, limit: number = 10): Promise<ApiResponse<SearchResultItemDto[]>> {
     const offset = (page - 1) * limit;
     
     // Count query
@@ -143,12 +144,12 @@ export class SearchService {
       JOIN categories c ON p.category_id = c.id
       WHERE 
         p.name ILIKE $1
-        AND ($2::uuid IS NULL OR p.restaurant_id = $2)
+        AND p.restaurant_id = $2
     `;
     
     const countResult = await this.databaseService.query<{total: string}>(countSql, [
       `%${word}%`,
-      uuid || null
+      uuid
     ]);
     const totalItems = parseInt(countResult.rows[0].total, 10);
     
@@ -168,7 +169,7 @@ export class SearchService {
       JOIN categories c ON p.category_id = c.id
       WHERE 
         p.name ILIKE $1
-        AND ($2::uuid IS NULL OR p.restaurant_id = $2)
+        AND p.restaurant_id = $2
       ORDER BY 
         CASE 
           WHEN p.name ILIKE $3 THEN 1  -- Coincidencia exacta del producto
@@ -182,7 +183,7 @@ export class SearchService {
 
     const result = await this.databaseService.query<SearchResultItemDto>(sql, [
       `%${word}%`,           // $1 - búsqueda parcial del producto
-      uuid || null,          // $2 - filtro por restaurante (opcional)
+      uuid,                  // $2 - filtro por restaurante
       word,                  // $3 - coincidencia exacta del producto
       `${word}%`,            // $4 - producto que empieza con la palabra
       limit,                 // $5 - límite de resultados
@@ -192,7 +193,7 @@ export class SearchService {
   }
 
   // Caso 4: Búsqueda por palabra + categoría (con prioridad)
-  private async extractByWordWithCategory(word: string, category: string, uuid?: string, page: number = 1, limit: number = 10): Promise<ApiResponse<SearchResultItemDto[]>> {
+  private async extractByWordWithCategory(word: string, category: string, uuid: string, page: number = 1, limit: number = 10): Promise<ApiResponse<SearchResultItemDto[]>> {
     const offset = (page - 1) * limit;
     
     // Count query
@@ -203,13 +204,13 @@ export class SearchService {
       WHERE 
         p.name ILIKE $1
         AND c.name ILIKE $2
-        AND ($3::uuid IS NULL OR p.restaurant_id = $3)
+        AND p.restaurant_id = $3
     `;
     
     const countResult = await this.databaseService.query<{total: string}>(countSql, [
       `%${word}%`,
       `%${category}%`,
-      uuid || null
+      uuid
     ]);
     const totalItems = parseInt(countResult.rows[0].total, 10);
     
@@ -230,7 +231,7 @@ export class SearchService {
       WHERE 
         p.name ILIKE $1
         AND c.name ILIKE $2
-        AND ($3::uuid IS NULL OR p.restaurant_id = $3)
+        AND p.restaurant_id = $3
       ORDER BY 
         CASE 
           WHEN c.name ILIKE $4 THEN 1  -- Prioridad: categoría coincide exacto
@@ -249,7 +250,7 @@ export class SearchService {
     const result = await this.databaseService.query<SearchResultItemDto>(sql, [
         `%${word}%`,           // $1 - búsqueda parcial del producto
         `%${category}%`,       // $2 - búsqueda parcial de la categoría
-        uuid || null,          // $3 - filtro por restaurante (opcional)
+        uuid,                  // $3 - filtro por restaurante
         category,              // $4 - coincidencia exacta de categoría
         word,                  // $5 - coincidencia exacta del producto
         `${word}%`,            // $6 - producto que empieza con la palabra

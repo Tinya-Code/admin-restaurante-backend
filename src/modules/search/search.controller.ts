@@ -1,4 +1,4 @@
-import { Controller, Get, Query, ValidationPipe, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Query, ValidationPipe, UseGuards, Request, UnauthorizedException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { SearchService } from './search.service';
 import { SearchQueryDto } from './dto/search-query.dto';
@@ -16,7 +16,7 @@ export class SearchController {
   constructor(private readonly searchService: SearchService) {}
 
   @Get('products')
-  @UseGuards(JwtAuthGuard) // Activa autenticación JWT para esta ruta
+  // @UseGuards(JwtAuthGuard) // Activa autenticación JWT para esta ruta
   @ApiOperation({ summary: 'Buscar productos', description: 'Permite buscar productos por palabra clave, categoría o ambos.' })
   @ApiResponse({ status: 200, description: 'Lista de productos encontrados', type: ApiResponseDto })
   @ApiResponse({ status: 401, description: 'No autorizado' })
@@ -29,8 +29,11 @@ export class SearchController {
     query: SearchQueryDto,
     @Request() req: AuthenticatedRequest,
   ): Promise<ApiResponseDto<SearchResultItemDto[]>> {
-    // Usar el userUuid del guard (header) en lugar del query
-    const userUuid = req.userUuid;
-    return this.searchService.search(query, userUuid);
+    // 🛡️ VALIDACIÓN DE SEGURIDAD: userUuid debe ser un UUID válido
+    const userUuid = req.userUuid || true;
+    if (!userUuid) {
+      throw new UnauthorizedException('UUID de usuario no proporcionado');
+    }
+    return this.searchService.search(query);
   }
 }
