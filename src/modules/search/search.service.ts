@@ -1,6 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { SearchQueryDto } from './dto/search-query.dto';
-import { SearchResultDto, SearchResultItemDto, PaginationMeta } from './dto/search-result.dto';
+import { SearchResultDto, SearchResultItemDto, PaginationMeta, Category } from './dto/search-result.dto';
 import { ApiResponse } from '../../common/dto/api-response.dto/api-response.dto';
 import { PaginationMetaDto } from '../../common/dto/pagination-meta.dto/pagination-meta.dto';
 import { DatabaseService } from '../../database/database.service';
@@ -295,6 +295,28 @@ export class SearchService {
       [],
       'No se encontraron resultados',
       meta
+    );
+  }
+
+  async getCategories(userUuid: string): Promise<ApiResponse<Category[]>> {
+    const sql = `
+      SELECT 
+        id,
+        restaurant_id,
+        name,
+        is_active,
+        created_at,
+        updated_at
+      FROM categories
+      WHERE restaurant_id = $1 AND is_active = true
+      ORDER BY name ASC
+    `;
+
+    const result = await this.databaseService.query<Category>(sql, [userUuid]);
+    
+    return new ApiResponse<Category[]>(
+      result.rows,
+      'Categorías obtenidas exitosamente'
     );
   }
 }

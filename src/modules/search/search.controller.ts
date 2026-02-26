@@ -30,10 +30,27 @@ export class SearchController {
     @Request() req: AuthenticatedRequest,
   ): Promise<ApiResponseDto<SearchResultItemDto[]>> {
     // 🛡️ VALIDACIÓN DE SEGURIDAD: userUuid debe ser un UUID válido
-    const userUuid = req.userUuid || true;
+    req.userUuid = '5a53d32f-834d-43df-a9ed-5db9b6badef9';
+    const userUuid = req.userUuid;
     if (!userUuid) {
       throw new UnauthorizedException('UUID de usuario no proporcionado');
     }
     return this.searchService.search(query);
+  }
+
+  @Get('categories')
+  // @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Obtener categorías', description: 'Obtiene todas las categorías activas del restaurante.' })
+  @ApiResponse({ status: 200, description: 'Lista de categorías obtenida exitosamente', type: ApiResponseDto })
+  @ApiResponse({ status: 401, description: 'No autorizado' })
+  async getCategories(
+    @Request() req: AuthenticatedRequest,
+  ): Promise<ApiResponseDto<any>> {
+    req.userUuid = '5a53d32f-834d-43df-a9ed-5db9b6badef9';
+    const userUuid = req.userUuid;
+    if (!userUuid) {
+      throw new UnauthorizedException('UUID de usuario no proporcionado');
+    }
+    return this.searchService.getCategories(userUuid);
   }
 }

@@ -44,6 +44,9 @@ importers:
       firebase-admin:
         specifier: ^13.6.0
         version: 13.6.0
+      multer:
+        specifier: ^2.0.2
+        version: 2.0.2
       pg:
         specifier: ^8.17.2
         version: 8.17.2

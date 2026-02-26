@@ -1,6 +1,15 @@
 import { IsString, IsNumber, IsArray, IsOptional, IsBoolean, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
+export interface Category {
+  id: string;              
+  restaurant_id: string;   
+  name: string;
+  is_active: boolean;
+  created_at: string;      
+  updated_at: string;       
+}
+
 export class SearchResultItemDto {
   @IsString()
   id: string;
