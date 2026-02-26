@@ -1,44 +1,45 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsObject, IsOptional } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsOptional, ValidateNested } from 'class-validator';
+import { BusinessConfigDto } from './config/business-config.dto';
+import { DisplayConfigDto } from './config/display-config.dto';
+import { OrderConfigDto } from './config/order-config.dto';
+import { WhatsAppConfigDto } from './config/whatsapp-config.dto';
 
 export class UpdateRestaurantSettingsDto {
   @IsOptional()
-  @IsObject()
+  @ValidateNested()
+  @Type(() => WhatsAppConfigDto)
   @ApiProperty({
-    example: {},
     description: 'WhatsApp configuration settings',
-    type: 'object',
-    additionalProperties: true,
+    type: WhatsAppConfigDto,
   })
-  whatsapp_config?: Record<string, any>;
+  whatsapp_config?: WhatsAppConfigDto;
 
   @IsOptional()
-  @IsObject()
+  @ValidateNested()
+  @Type(() => DisplayConfigDto)
   @ApiProperty({
-    example: {},
     description: 'Display configuration settings',
-    type: 'object',
-    additionalProperties: true,
+    type: DisplayConfigDto,
   })
-  display_config?: Record<string, any>;
+  display_config?: DisplayConfigDto;
 
   @IsOptional()
-  @IsObject()
+  @ValidateNested()
+  @Type(() => OrderConfigDto)
   @ApiProperty({
-    example: {},
     description: 'Order configuration settings',
-    type: 'object',
-    additionalProperties: true,
+    type: OrderConfigDto,
   })
-  order_config?: Record<string, any>;
+  order_config?: OrderConfigDto;
 
   @IsOptional()
-  @IsObject()
+  @ValidateNested()
+  @Type(() => BusinessConfigDto)
   @ApiProperty({
-    example: {},
     description: 'Business configuration settings',
-    type: 'object',
-    additionalProperties: true,
+    type: BusinessConfigDto,
   })
-  business_config?: Record<string, any>;
+  business_config?: BusinessConfigDto;
 }
