@@ -25,8 +25,7 @@ export class SearchController {
   @ApiQuery({ name: 'page', required: false, description: 'Número de página' })
   @ApiQuery({ name: 'limit', required: false, description: 'Límite de resultados' })
   async search(
-    @Query(new ValidationPipe({ transform: true }))
-    query: SearchQueryDto,
+    @Query() query: any,
     @Request() req: AuthenticatedRequest,
   ): Promise<ApiResponseDto<SearchResultItemDto[]>> {
     // 🛡️ VALIDACIÓN DE SEGURIDAD: userUuid debe ser un UUID válido
@@ -35,7 +34,7 @@ export class SearchController {
     if (!userUuid) {
       throw new UnauthorizedException('UUID de usuario no proporcionado');
     }
-    return this.searchService.search(query);
+    return this.searchService.search(query, userUuid);
   }
 
   @Get('categories')

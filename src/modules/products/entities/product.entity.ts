@@ -39,7 +39,8 @@ export class Product {
   description?: string | null;
 
   @ApiProperty({
-    description: 'Precio del producto (viene como string desde PostgreSQL NUMERIC)',
+    description:
+      'Precio del producto (viene como string desde PostgreSQL NUMERIC)',
     example: '12.50',
     type: String,
   })

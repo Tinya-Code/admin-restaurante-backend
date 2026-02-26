@@ -9,10 +9,8 @@ import { DatabaseService } from '../../database/database.service';
 export class SearchService {
   constructor(private readonly databaseService: DatabaseService) {}
 
-  async search(query: SearchQueryDto): Promise<ApiResponse<SearchResultItemDto[]>> {
+  async search(query: SearchQueryDto, userUuid: string): Promise<ApiResponse<SearchResultItemDto[]>> {
 
-    // Extraemos userUuid del query
-    const userUuid = query.userUuid;
     // extraermos page y limit del query
     const page = query.page || 1;
     const limit = query.limit || 10;

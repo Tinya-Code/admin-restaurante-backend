@@ -1,8 +1,8 @@
+import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions/all-exceptions.filter';
-
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -12,14 +12,24 @@ async function bootstrap() {
     .setVersion('1.0')
     .addTag('cats')
     .build();
-  app.enableCors();
   const documentFactory = () => SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, documentFactory);
+
+  // Configurar ValidationPipe con validación estricta
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true, // Remueve propiedades no definidas en los DTOs
+      forbidNonWhitelisted: true, // Lanza error si hay propiedades no definidas
+      transform: true, // Transforma los payloads a los tipos de los DTOs
+      transformOptions: {
+        enableImplicitConversion: false, // No convertir tipos automáticamente
+      },
+    }),
+  );
+
   app.enableCors({
     origin: (origin, callback) => {
-      const allowedOrigins = [
-        'http://localhost:4200','http://localhost:3000/api'
-      ];
+      const allowedOrigins = ['http://localhost:4200', 'http://localhost:3000'];
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -28,6 +38,7 @@ async function bootstrap() {
     },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   });
 
   app.useGlobalFilters(new AllExceptionsFilter());

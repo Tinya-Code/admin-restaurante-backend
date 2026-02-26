@@ -34,7 +34,7 @@ export class JwtAuthGuard implements CanActivate {
         return true;
       }
       
-      const decodedToken = await this.firebaseService.verifyToken(token);
+      const decodedToken = await this.firebaseService.verifyIdToken(token);
       // El UID viene del token de Firebase (no del header)
       request.userUuid = decodedToken.uid;
       console.log('✅ Usuario autenticado:', decodedToken.uid);
