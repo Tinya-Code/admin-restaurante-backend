@@ -1,6 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { SearchQueryDto } from './dto/search-query.dto';
-import { SearchResultDto, SearchResultItemDto, PaginationMeta, Category } from './dto/search-result.dto';
+import { SearchResultItemDto, Category } from './dto/search-result.dto';
 import { ApiResponse } from '../../common/dto/api-response.dto/api-response.dto';
 import { PaginationMetaDto } from '../../common/dto/pagination-meta.dto/pagination-meta.dto';
 import { DatabaseService } from '../../database/database.service';
@@ -268,8 +268,6 @@ export class SearchService {
     totalItems?: number
   ): ApiResponse<SearchResultItemDto[]> {
     const actualTotalItems = totalItems !== undefined ? totalItems : results.length;
-    const totalPages = Math.ceil(actualTotalItems / limit);
-
     const meta = new PaginationMetaDto(
       page,
       limit,
@@ -296,6 +294,7 @@ export class SearchService {
     );
   }
 
+  // Método para obtener categorías
   async getCategories(userUuid: string): Promise<ApiResponse<Category[]>> {
     const sql = `
       SELECT 

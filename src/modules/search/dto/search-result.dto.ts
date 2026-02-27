@@ -1,5 +1,4 @@
-import { IsString, IsNumber, IsArray, IsOptional, IsBoolean, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsString, IsNumber, IsOptional, IsBoolean } from 'class-validator';
 
 export interface Category {
   id: string;              
@@ -39,42 +38,4 @@ export class SearchResultItemDto {
 
   @IsString()
   updated_at: string;
-}
-
-export class PaginationMeta {
-  @IsNumber()
-  limit: number;
-  @IsNumber()
-  current_page: number;
-  @IsNumber()
-  total_pages: number;
-  @IsNumber()
-  total_items: number;
-  @IsBoolean()
-  has_next: boolean;
-  @IsBoolean()
-  has_prev: boolean;
-  @IsString()
-  order_by?: string;
-  @IsString()
-  sortDirection?: 'ASC' | 'DESC';
-}
-
-export class SearchResultDto {
-  @IsString()
-  status: string;
-
-  @IsNumber()
-  code: number;
-
-  @IsArray()
-  data: SearchResultItemDto[];
-
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => PaginationMeta)
-  meta: PaginationMeta | null;
-
-  @IsString()
-  error: string;
 }
