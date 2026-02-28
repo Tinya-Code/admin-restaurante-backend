@@ -29,7 +29,7 @@ export class SearchController {
     @Request() req: AuthenticatedRequest,
   ): Promise<ApiResponseDto<SearchResultItemDto[]>> {
     // 🛡️ VALIDACIÓN DE SEGURIDAD: userUuid debe ser un UUID válido
-    req.userUuid = '5a53d32f-834d-43df-a9ed-5db9b6badef9';
+    req.userUuid = '803a50be-7740-4eaf-b399-2b1ad06f1406';
     const userUuid = req.userUuid;
     if (!userUuid) {
       throw new UnauthorizedException('UUID de usuario no proporcionado');
@@ -45,7 +45,7 @@ export class SearchController {
   async getCategories(
     @Request() req: AuthenticatedRequest,
   ): Promise<ApiResponseDto<any>> {
-    req.userUuid = '5a53d32f-834d-43df-a9ed-5db9b6badef9';
+    req.userUuid = '803a50be-7740-4eaf-b399-2b1ad06f1406';
     const userUuid = req.userUuid;
     if (!userUuid) {
       throw new UnauthorizedException('UUID de usuario no proporcionado');

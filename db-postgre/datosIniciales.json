@@ -11,7 +11,7 @@
   "restaurants": [
     {
       "restaurant": {
-        "id": "5a53d32f-834d-43df-a9ed-5db9b6badef9",
+        "id": "803a50be-7740-4eaf-b399-2b1ad06f1406",
         "name": "Mi Restaurante",
         "slug": "mi-restaurante",
         "owner_id": "9d3a857f-8678-471e-ba35-923e21f3f691",
@@ -31,7 +31,7 @@
         {
           "menu": {
             "id": "e61d4b41-4813-4be1-93db-79373f563580",
-            "restaurant_id": "5a53d32f-834d-43df-a9ed-5db9b6badef9",
+            "restaurant_id": "803a50be-7740-4eaf-b399-2b1ad06f1406",
             "name": "Menú Principal",
             "description": null,
             "is_active": true,
@@ -43,7 +43,7 @@
             {
               "category": {
                 "id": "239f1742-fc12-4f17-bf2a-bd955890582b",
-                "restaurant_id": "5a53d32f-834d-43df-a9ed-5db9b6badef9",
+                "restaurant_id": "803a50be-7740-4eaf-b399-2b1ad06f1406",
                 "menu_id": "e61d4b41-4813-4be1-93db-79373f563580",
                 "name": "Bebidas Calientes",
                 "description": null,
@@ -55,7 +55,7 @@
               "products": [
                 {
                   "id": "9c0b1132-c388-445d-8e47-08afe12a10ce",
-                  "restaurant_id": "5a53d32f-834d-43df-a9ed-5db9b6badef9",
+                  "restaurant_id": "803a50be-7740-4eaf-b399-2b1ad06f1406",
                   "category_id": "239f1742-fc12-4f17-bf2a-bd955890582b",
                   "name": "Café Americano",
                   "description": null,
