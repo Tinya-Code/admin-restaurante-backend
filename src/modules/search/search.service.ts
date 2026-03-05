@@ -166,12 +166,12 @@ export class SearchService {
       FROM products p
       JOIN categories c ON p.category_id = c.id
       WHERE 
-        p.name ILIKE $1
+        unaccent(p.name) ILIKE unaccent($1)
         AND p.restaurant_id = $2
       ORDER BY 
         CASE 
-          WHEN p.name ILIKE $3 THEN 1  -- Coincidencia exacta del producto
-          WHEN p.name ILIKE $4 THEN 2  -- Producto que empieza con la palabra
+          WHEN unaccent(p.name) ILIKE unaccent($3) THEN 1  -- Coincidencia exacta del producto
+          WHEN unaccent(p.name) ILIKE unaccent($4) THEN 2  -- Producto que empieza con la palabra
           ELSE 3                       -- Producto que contiene la palabra
         END,
         p.display_order ASC,
@@ -200,8 +200,8 @@ export class SearchService {
       FROM products p
       JOIN categories c ON p.category_id = c.id
       WHERE 
-        p.name ILIKE $1
-        AND c.name ILIKE $2
+        unaccent(p.name) ILIKE unaccent($1)
+        AND unaccent(c.name) ILIKE unaccent($2)
         AND p.restaurant_id = $3
     `;
     
@@ -227,17 +227,17 @@ export class SearchService {
       FROM products p
       JOIN categories c ON p.category_id = c.id
       WHERE 
-        p.name ILIKE $1
-        AND c.name ILIKE $2
+        unaccent(p.name) ILIKE unaccent($1)
+        AND unaccent(c.name) ILIKE unaccent($2)
         AND p.restaurant_id = $3
       ORDER BY 
         CASE 
-          WHEN c.name ILIKE $4 THEN 1  -- Prioridad: categoría coincide exacto
+          WHEN unaccent(c.name) ILIKE unaccent($4) THEN 1  -- Prioridad: categoría coincide exacto
           ELSE 2                       -- Categoría coincide parcialmente
         END,
         CASE 
-          WHEN p.name ILIKE $5 THEN 1  -- Prioridad: producto coincide exacto
-          WHEN p.name ILIKE $6 THEN 2  -- Producto empieza con la palabra
+          WHEN unaccent(p.name) ILIKE unaccent($5) THEN 1  -- Prioridad: producto coincide exacto
+          WHEN unaccent(p.name) ILIKE unaccent($6) THEN 2  -- Producto empieza con la palabra
           ELSE 3                       -- Producto contiene la palabra
         END,
         p.display_order ASC,
