@@ -10,6 +10,7 @@ import {
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
+import { IsBusinessHours } from '../../validators/business-hours.validator';
 
 export class BusinessHoursDto {
   @IsOptional()
@@ -108,8 +109,7 @@ export class SocialMediaDto {
 
 export class BusinessConfigDto {
   @IsOptional()
-  @ValidateNested()
-  @Type(() => BusinessHoursDto)
+  @IsBusinessHours()
   @ApiProperty({
     description: 'Business hours for each day of the week',
     example: {
