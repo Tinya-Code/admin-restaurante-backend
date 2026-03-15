@@ -1,4 +1,319 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { SearchQueryDto } from './dto/search-query.dto';
+import { SearchResultItemDto, Category } from './dto/search-result.dto';
+import { ApiResponse } from '../../common/dto/api-response.dto/api-response.dto';
+import { PaginationMetaDto } from '../../common/dto/pagination-meta.dto/pagination-meta.dto';
+import { DatabaseService } from '../../database/database.service';
 
 @Injectable()
-export class SearchService {}
+export class SearchService {
+  constructor(private readonly databaseService: DatabaseService) {}
+
+  async search(query: SearchQueryDto, userUuid: string): Promise<ApiResponse<SearchResultItemDto[]>> {
+
+    // extraermos page y limit del query
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+
+    // Caso 1: Sin parámetros de búsqueda → Obtener todos los productos
+    if (!query.searchword && !query.categoria) {
+      console.log('📋 Case 1: Get all products');
+      return await this.getAllProducts(userUuid!, page, limit);
+    }
+    
+    // Caso 2: Solo categoría especificada → Filtrar productos por categoría
+    if (!query.searchword && query.categoria) {
+      console.log('📋 Case 2: Filter by category:', query.categoria);
+      return await this.extractByCategory(query.categoria, userUuid!, page, limit);
+    }
+    
+    // Caso 3: Solo palabra clave → Buscar productos por nombre
+    if (query.searchword && !query.categoria) {
+      console.log('📋 Case 3: Search by word:', query.searchword);
+      return await this.extractByWord(query.searchword, userUuid!, page, limit);
+    }
+    
+    // Caso 4: Palabra clave + categoría → Búsqueda combinada con prioridad
+    if (query.searchword && query.categoria) {
+      console.log('📋 Case 4: Search by word + category:', query.searchword, query.categoria);
+      return await this.extractByWordWithCategory(query.searchword, query.categoria, userUuid!, page, limit);
+    }
+    
+    console.log('📋 Case 5: Empty response');
+    return this.createEmptyResponse();
+  }
+
+  // Caso 1: Obtener todos los productos
+  private async getAllProducts(uuid: string, page: number = 1, limit: number = 10): Promise<ApiResponse<SearchResultItemDto[]>> {
+    const offset = (page - 1) * limit;
+    
+    // Count query
+    const countSql = `
+      SELECT COUNT(*) as total
+      FROM products p
+      JOIN categories c ON p.category_id = c.id
+      WHERE p.restaurant_id = $1
+    `;
+    
+    const countResult = await this.databaseService.query<{total: string}>(countSql, [uuid]);
+    const totalItems = parseInt(countResult.rows[0].total, 10);
+    
+    // Data query con paginación
+    const sql = `
+      SELECT 
+        p.id,
+        c.name as category_name,
+        p.name,
+        p.description,
+        p.price,
+        p.image_url,
+        p.is_available,
+        p.created_at,
+        p.updated_at
+      FROM products p
+      JOIN categories c ON p.category_id = c.id
+      WHERE p.restaurant_id = $1
+      ORDER BY p.display_order ASC, p.name ASC
+      LIMIT $2 OFFSET $3
+    `;
+
+    const result = await this.databaseService.query<SearchResultItemDto>(sql, [uuid, limit, offset]);
+    return this.createSearchResponse(result.rows as SearchResultItemDto[], '', 'todos', page, limit, totalItems);
+  }
+
+  // Caso 2: Filtrar por categoría
+  private async extractByCategory(category: string, uuid: string, page: number = 1, limit: number = 10): Promise<ApiResponse<SearchResultItemDto[]>> {
+    const offset = (page - 1) * limit;
+    
+    // Count query
+    const countSql = `
+      SELECT COUNT(*) as total
+      FROM products p
+      JOIN categories c ON p.category_id = c.id
+      WHERE 
+        c.name ILIKE $1
+        AND p.restaurant_id = $2
+    `;
+    
+    const countResult = await this.databaseService.query<{total: string}>(countSql, [
+      `%${category}%`,
+      uuid
+    ]);
+    const totalItems = parseInt(countResult.rows[0].total, 10);
+    
+    // Data query con paginación
+    const sql = `
+      SELECT 
+        p.id,
+        c.name as category_name,
+        p.name,
+        p.description,
+        p.price,
+        p.image_url,
+        p.is_available,
+        p.created_at,
+        p.updated_at
+      FROM products p
+      JOIN categories c ON p.category_id = c.id
+      WHERE 
+        c.name ILIKE $1
+        AND p.restaurant_id = $2
+      ORDER BY p.display_order ASC, p.name ASC
+      LIMIT $3 OFFSET $4
+    `;
+
+    const result = await this.databaseService.query<SearchResultItemDto>(sql, [
+      `%${category}%`,       // $1 - búsqueda parcial de categoría
+      uuid,                  // $2 - filtro por restaurante
+      limit,                 // $3 - límite de resultados
+      offset                 // $4 - offset para paginación
+    ]);
+    return this.createSearchResponse(result.rows, '', category, page, limit, totalItems);
+  }
+
+  // Caso 3: Búsqueda por palabra clave
+  private async extractByWord(word: string, uuid: string, page: number = 1, limit: number = 10): Promise<ApiResponse<SearchResultItemDto[]>> {
+    const offset = (page - 1) * limit;
+    
+    // Count query
+    const countSql = `
+      SELECT COUNT(*) as total
+      FROM products p
+      JOIN categories c ON p.category_id = c.id
+      WHERE 
+        p.name ILIKE $1
+        AND p.restaurant_id = $2
+    `;
+    
+    const countResult = await this.databaseService.query<{total: string}>(countSql, [
+      `%${word}%`,
+      uuid
+    ]);
+    const totalItems = parseInt(countResult.rows[0].total, 10);
+    
+    // Data query con paginación
+    const sql = `
+      SELECT 
+        p.id,
+        c.name as category_name,
+        p.name,
+        p.description,
+        p.price,
+        p.image_url,
+        p.is_available,
+        p.created_at,
+        p.updated_at
+      FROM products p
+      JOIN categories c ON p.category_id = c.id
+      WHERE 
+        unaccent(p.name) ILIKE unaccent($1)
+        AND p.restaurant_id = $2
+      ORDER BY 
+        CASE 
+          WHEN unaccent(p.name) ILIKE unaccent($3) THEN 1  -- Coincidencia exacta del producto
+          WHEN unaccent(p.name) ILIKE unaccent($4) THEN 2  -- Producto que empieza con la palabra
+          ELSE 3                       -- Producto que contiene la palabra
+        END,
+        p.display_order ASC,
+        p.name ASC
+      LIMIT $5 OFFSET $6
+    `;
+
+    const result = await this.databaseService.query<SearchResultItemDto>(sql, [
+      `%${word}%`,           // $1 - búsqueda parcial del producto
+      uuid,                  // $2 - filtro por restaurante
+      word,                  // $3 - coincidencia exacta del producto
+      `${word}%`,            // $4 - producto que empieza con la palabra
+      limit,                 // $5 - límite de resultados
+      offset                 // $6 - offset para paginación
+    ]);
+    return this.createSearchResponse(result.rows, word, '', page, limit, totalItems);
+  }
+
+  // Caso 4: Búsqueda por palabra + categoría (con prioridad)
+  private async extractByWordWithCategory(word: string, category: string, uuid: string, page: number = 1, limit: number = 10): Promise<ApiResponse<SearchResultItemDto[]>> {
+    const offset = (page - 1) * limit;
+    
+    // Count query
+    const countSql = `
+      SELECT COUNT(*) as total
+      FROM products p
+      JOIN categories c ON p.category_id = c.id
+      WHERE 
+        unaccent(p.name) ILIKE unaccent($1)
+        AND unaccent(c.name) ILIKE unaccent($2)
+        AND p.restaurant_id = $3
+    `;
+    
+    const countResult = await this.databaseService.query<{total: string}>(countSql, [
+      `%${word}%`,
+      `%${category}%`,
+      uuid
+    ]);
+    const totalItems = parseInt(countResult.rows[0].total, 10);
+    
+    // Data query con paginación
+    const sql = `
+      SELECT 
+        p.id,
+        c.name as category_name,
+        p.name,
+        p.description,
+        p.price,
+        p.image_url,
+        p.is_available,
+        p.created_at,
+        p.updated_at
+      FROM products p
+      JOIN categories c ON p.category_id = c.id
+      WHERE 
+        unaccent(p.name) ILIKE unaccent($1)
+        AND unaccent(c.name) ILIKE unaccent($2)
+        AND p.restaurant_id = $3
+      ORDER BY 
+        CASE 
+          WHEN unaccent(c.name) ILIKE unaccent($4) THEN 1  -- Prioridad: categoría coincide exacto
+          ELSE 2                       -- Categoría coincide parcialmente
+        END,
+        CASE 
+          WHEN unaccent(p.name) ILIKE unaccent($5) THEN 1  -- Prioridad: producto coincide exacto
+          WHEN unaccent(p.name) ILIKE unaccent($6) THEN 2  -- Producto empieza con la palabra
+          ELSE 3                       -- Producto contiene la palabra
+        END,
+        p.display_order ASC,
+        p.name ASC
+      LIMIT $7 OFFSET $8
+    `;
+
+    const result = await this.databaseService.query<SearchResultItemDto>(sql, [
+        `%${word}%`,           // $1 - búsqueda parcial del producto
+        `%${category}%`,       // $2 - búsqueda parcial de la categoría
+        uuid,                  // $3 - filtro por restaurante
+        category,              // $4 - coincidencia exacta de categoría
+        word,                  // $5 - coincidencia exacta del producto
+        `${word}%`,            // $6 - producto que empieza con la palabra
+        limit,                 // $7 - límite de resultados
+        offset                 // $8 - offset para paginación
+      ]);
+      return this.createSearchResponse(result.rows, word, category, page, limit, totalItems);
+  }
+
+  // Métodos auxiliares para crear respuestas
+  private createSearchResponse(
+    results: SearchResultItemDto[], 
+    searchWord: string, 
+    category: string, 
+    page: number = 1, 
+    limit: number = 10, 
+    totalItems?: number
+  ): ApiResponse<SearchResultItemDto[]> {
+    const actualTotalItems = totalItems !== undefined ? totalItems : results.length;
+    const meta = new PaginationMetaDto(
+      page,
+      limit,
+      actualTotalItems,
+      'name',
+      'ASC'
+    );
+
+    const message = `Búsqueda ${searchWord ? `de "${searchWord}"` : ''} ${category ? `en categoría "${category}"` : ''}`.trim() || 'Resultados de búsqueda';
+
+    return new ApiResponse<SearchResultItemDto[]>(
+      results,
+      message,
+      meta
+    );
+  }
+
+  private createEmptyResponse(): ApiResponse<SearchResultItemDto[]> {
+    const meta = new PaginationMetaDto(1, 10, 0, 'name', 'ASC');
+    return new ApiResponse<SearchResultItemDto[]>(
+      [],
+      'No se encontraron resultados',
+      meta
+    );
+  }
+
+  // Método para obtener categorías
+  async getCategories(userUuid: string): Promise<ApiResponse<Category[]>> {
+    const sql = `
+      SELECT 
+        id,
+        restaurant_id,
+        name,
+        is_active,
+        created_at,
+        updated_at
+      FROM categories
+      WHERE restaurant_id = $1 AND is_active = true
+      ORDER BY name ASC
+    `;
+
+    const result = await this.databaseService.query<Category>(sql, [userUuid]);
+    
+    return new ApiResponse<Category[]>(
+      result.rows,
+      'Categorías obtenidas exitosamente'
+    );
+  }
+}
