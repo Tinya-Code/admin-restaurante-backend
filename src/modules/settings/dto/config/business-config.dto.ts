@@ -34,13 +34,13 @@ export class BusinessHoursDto {
   close?: string;
 
   @IsOptional()
-  @ValidateIf((o) => o.closed !== undefined)
+  @ValidateIf((o) => o.isOpen !== undefined)
   @IsBoolean()
   @ApiProperty({
-    description: 'Is the restaurant closed on this day',
-    example: false,
+    description: 'Is the restaurant open on this day',
+    example: true,
   })
-  closed?: boolean;
+  isOpen?: boolean;
 }
 
 export class DeliveryZoneDto {
@@ -113,8 +113,8 @@ export class BusinessConfigDto {
   @ApiProperty({
     description: 'Business hours for each day of the week',
     example: {
-      monday: { open: '09:00', close: '22:00', closed: false },
-      sunday: { open: '10:00', close: '20:00', closed: false },
+      monday: { open: '09:00', close: '22:00', isOpen: true },
+      sunday: { open: '10:00', close: '20:00', isOpen: true },
     },
     type: 'object',
     additionalProperties: true,
