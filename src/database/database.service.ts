@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger} from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { Pool, PoolClient, QueryResult } from 'pg';
 import { ConfigService } from '../config/config.service';
 
@@ -6,31 +6,42 @@ import { ConfigService } from '../config/config.service';
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(DatabaseService.name);
   private pool: Pool;
-constructor(private readonly configService: ConfigService) {}
+
+  constructor(private readonly configService: ConfigService) {}
 
   async onModuleInit() {
-    this.pool = new Pool({
-      host: this.configService.databaseHost,
-      port: this.configService.databasePort,
-      user: this.configService.databaseUser,
-      password: this.configService.databasePassword,
-      database: this.configService.databaseName,
-      ssl: {
-        rejectUnauthorized: false, // Railway requiere SSL
-      },
-      max: 20, // Número máximo de clientes en el pool
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
-    });
+  this.pool = new Pool({
+  host: this.configService.databaseHost,
+  port: this.configService.databasePort,
+  user: this.configService.databaseUser,
+  password: this.configService.databasePassword,
+  database: this.configService.databaseName,
+  ssl: { rejectUnauthorized: false },
+  max: 5,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000,
+});
 
-    // Verificar conexión
-    try {
-      const client = await this.pool.connect();
-      this.logger.log('✅ Database connected successfully');
-      client.release();
-    } catch (error) {
-      this.logger.error('❌ Database connection failed', error);
-      throw error;
+
+    await this.connectWithRetry();
+  }
+
+  private async connectWithRetry(retries = 5, delay = 5000): Promise<void> {
+    while (retries > 0) {
+      try {
+        const client = await this.pool.connect();
+        this.logger.log('✅ Database connected successfully');
+        client.release();
+        return;
+      } catch (error) {
+        this.logger.error(`❌ Database connection failed. Retries left: ${retries - 1}`, error);
+        retries -= 1;
+        if (retries === 0) {
+          this.logger.error('🚨 Could not connect to database after multiple attempts');
+          return; // no lanzamos error para que la app no se rompa
+        }
+        await new Promise(res => setTimeout(res, delay));
+      }
     }
   }
 
@@ -39,9 +50,6 @@ constructor(private readonly configService: ConfigService) {}
     this.logger.log('🔌 Database connection closed');
   }
 
-  /**
-   * Ejecuta una query SQL
-   */
   async query<T = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
     const start = Date.now();
     try {
@@ -55,19 +63,11 @@ constructor(private readonly configService: ConfigService) {}
     }
   }
 
-  /**
-   * Obtiene un cliente del pool para transacciones
-   */
   async getClient(): Promise<PoolClient> {
     return this.pool.connect();
   }
 
-  /**
-   * Ejecuta una transacción
-   */
-  async transaction<T>(
-    callback: (client: PoolClient) => Promise<T>,
-  ): Promise<T> {
+  async transaction<T>(callback: (client: PoolClient) => Promise<T>): Promise<T> {
     const client = await this.getClient();
     try {
       await client.query('BEGIN');
@@ -82,13 +82,7 @@ constructor(private readonly configService: ConfigService) {}
     }
   }
 
-  /**
-   * Helpers para queries comunes
-   */
-  async findOne<T = any>(
-    table: string,
-    conditions: Record<string, any>,
-  ): Promise<T | null> {
+  async findOne<T = any>(table: string, conditions: Record<string, any>): Promise<T | null> {
     const keys = Object.keys(conditions);
     const values = Object.values(conditions);
     const whereClause = keys.map((key, i) => `${key} = $${i + 1}`).join(' AND ');
@@ -101,10 +95,7 @@ constructor(private readonly configService: ConfigService) {}
     return result.rows[0] || null;
   }
 
-  async findAll<T = any>(
-    table: string,
-    conditions?: Record<string, any>,
-  ): Promise<T[]> {
+  async findAll<T = any>(table: string, conditions?: Record<string, any>): Promise<T[]> {
     if (!conditions || Object.keys(conditions).length === 0) {
       const result = await this.query<T>(`SELECT * FROM ${table}`);
       return result.rows;
@@ -122,10 +113,7 @@ constructor(private readonly configService: ConfigService) {}
     return result.rows;
   }
 
-  async insert<T = any>(
-    table: string,
-    data: Record<string, any>,
-  ): Promise<T> {
+  async insert<T = any>(table: string, data: Record<string, any>): Promise<T> {
     const keys = Object.keys(data);
     const values = Object.values(data);
     const columns = keys.join(', ');
@@ -139,11 +127,7 @@ constructor(private readonly configService: ConfigService) {}
     return result.rows[0];
   }
 
-  async update<T = any>(
-    table: string,
-    id: string | number,
-    data: Record<string, any>,
-  ): Promise<T> {
+  async update<T = any>(table: string, id: string | number, data: Record<string, any>): Promise<T> {
     const keys = Object.keys(data);
     const values = Object.values(data);
     const setClause = keys.map((key, i) => `${key} = $${i + 1}`).join(', ');
@@ -156,10 +140,7 @@ constructor(private readonly configService: ConfigService) {}
     return result.rows[0];
   }
 
-  async delete(
-    table: string,
-    id: string | number,
-  ): Promise<boolean> {
+  async delete(table: string, id: string | number): Promise<boolean> {
     const result = await this.query(
       `DELETE FROM ${table} WHERE id = $1`,
       [id],

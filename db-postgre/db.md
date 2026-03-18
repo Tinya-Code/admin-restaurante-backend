@@ -41,7 +41,8 @@ categories (1) ──→ (N) products
 Almacena información de usuarios (sincronizada con Firebase Auth).
 
 **Columnas:**
-- `id` (UUID): ID de Firebase Auth
+- `id` (UUID): Identificador interno único generador por DB
+- `firebase_uid` (TEXT): ID de Firebase Auth (Mapeo)
 - `email` (TEXT): Email único del usuario
 - `phone` (TEXT): Teléfono opcional
 - `display_name` (TEXT): Nombre a mostrar
@@ -299,7 +300,8 @@ export interface TimestampEntity {
 // USER
 // ============================================
 export interface User extends TimestampEntity {
-  id: string; // UUID from Firebase
+  id: string; // Internal UUID
+  firebase_uid: string; // ID from Firebase
   email: string;
   phone?: string;
   display_name?: string;
@@ -503,7 +505,7 @@ export interface Product extends TimestampEntity {
 // ============================================
 
 export interface CreateUserDto {
-  id: string; // Firebase UID
+  firebase_uid: string; // Firebase UID
   email: string;
   phone?: string;
   display_name?: string;
@@ -615,6 +617,7 @@ export interface DatabaseTimestamps {
 
 export interface UserRow extends DatabaseTimestamps {
   id: string;
+  firebase_uid: string;
   email: string;
   phone: string | null;
   display_name: string | null;
@@ -701,7 +704,7 @@ export interface ProductRow extends DatabaseTimestamps {
 // ============================================
 
 export interface InsertUserParams {
-  id: string;
+  firebase_uid: string;
   email: string;
   phone?: string;
   display_name?: string;
