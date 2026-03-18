@@ -21,14 +21,14 @@ export class OrderConfigDto {
   enabled?: boolean;
 
   @IsOptional()
-  @ValidateIf((o) => o.min_order_amount !== undefined)
+  @ValidateIf((o) => o.max_order_quantity !== undefined)
   @IsNumber()
-  @Min(0)
+  @Min(1)
   @ApiProperty({
-    description: 'Minimum order amount',
-    example: 15.0,
+    description: 'Maximum order quantity',
+    example: 10,
   })
-  min_order_amount?: number;
+  max_order_quantity?: number;
 
   @IsOptional()
   @ValidateIf((o) => o.delivery_fee !== undefined)

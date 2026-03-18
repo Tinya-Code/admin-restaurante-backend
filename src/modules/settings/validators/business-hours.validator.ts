@@ -20,10 +20,10 @@ export class BusinessHoursValidator implements ValidatorConstraintInterface {
       }
 
       // Validate BusinessHoursDto structure
-      const { open, close, closed } = dayValue as any;
+      const { open, close, isOpen } = dayValue as any;
 
-      // Check if closed is boolean when provided
-      if (closed !== undefined && typeof closed !== 'boolean') {
+      // Check if isOpen is boolean when provided
+      if (isOpen !== undefined && typeof isOpen !== 'boolean') {
         return false;
       }
 
@@ -42,8 +42,8 @@ export class BusinessHoursValidator implements ValidatorConstraintInterface {
         }
       }
 
-      // If not closed, both open and close should be provided
-      if (closed === false && (!open || !close)) {
+      // If not isOpen, both open and close should be provided
+      if (isOpen === false && (!open || !close)) {
         return false;
       }
     }
@@ -52,7 +52,7 @@ export class BusinessHoursValidator implements ValidatorConstraintInterface {
   }
 
   defaultMessage(args: ValidationArguments) {
-    return 'Business hours must be an object with day keys and valid time values (HH:mm format) and closed boolean';
+    return 'Business hours must be an object with day keys and valid time values (HH:mm format) and isOpen boolean';
   }
 }
 
