@@ -3,44 +3,55 @@ import {
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
-import { DatabaseService } from '../../database/database.service';
-import { AuthenticatedUser } from '../../common/interfaces/authenticated-user.interface';
 import { AuthUserDto } from './dto/auth-response.dto';
+import { UsersRepository } from './users.repository';
 
-interface UserRow {
-  id: string;
+interface FirebaseUserData {
+  uid: string;
   email: string;
-  display_name: string | null;
-  photo_url: string | null;
-  created_at: Date;
+  displayName?: string;
+  photoUrl?: string;
 }
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
-  constructor(private readonly db: DatabaseService) {}
+  constructor(private readonly usersRepository: UsersRepository) {}
 
-  async validateAndGetUser(firebaseUser: AuthenticatedUser): Promise<AuthUserDto> {
-    const row = await this.db.findOne<UserRow>('users', {
-      email: firebaseUser.email.toLowerCase(),
-    });
+  async validateAndGetUser(firebaseUser: FirebaseUserData): Promise<AuthUserDto> {
+    this.logger.debug(`Validating user: ${firebaseUser.email} (UID: ${firebaseUser.uid})`);
+    
+    // 1. Intentar buscar por UID de Firebase
+    let user = await this.usersRepository.findByFirebaseUid(firebaseUser.uid);
 
-    if (!row) {
+    // 2. Si no existe por UID, intentar por email (migración o primer login)
+    if (!user) {
+      this.logger.debug(`User not found by UID, trying email: ${firebaseUser.email}`);
+      user = await this.usersRepository.findByEmail(firebaseUser.email);
+      
+      if (user && !user.firebase_uid) {
+        // Enlazamos el UID si se encontró por email pero no tenía UID asociado
+        await this.usersRepository.updateFirebaseUid(user.id, firebaseUser.uid);
+        this.logger.log(`Linked firebase_uid: ${firebaseUser.uid} to user: ${user.email}`);
+      }
+    }
+
+    if (!user) {
       this.logger.warn(`Login denied — user not registered: ${firebaseUser.email}`);
       throw new UnauthorizedException(
         'Your account is not registered. Please contact an administrator.',
       );
     }
 
-    this.logger.log(`Login successful: ${row.email}`);
+    this.logger.log(`Login successful: ${user.email}`);
 
     return {
-      id: row.id,
-      email: row.email,
-      displayName: row.display_name ?? undefined,
-      photoUrl: row.photo_url ?? undefined,
-      createdAt: row.created_at,
+      id: user.id,
+      email: user.email,
+      displayName: user.display_name ?? undefined,
+      photoUrl: user.photo_url ?? undefined,
+      createdAt: user.created_at,
     };
   }
 }

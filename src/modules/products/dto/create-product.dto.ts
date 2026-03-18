@@ -17,13 +17,6 @@ import {
 export class CreateProductDto {
   @IsUUID()
   @ApiProperty({
-    description: 'ID del restaurante',
-    example: '5a53d32f-834d-43df-a9ed-5db9b6badef9',
-  })
-  restaurant_id: string;
-
-  @IsUUID()
-  @ApiProperty({
     description: 'ID de la categoría',
     example: '239f1742-fc12-4f17-bf2a-bd955890582b',
   })

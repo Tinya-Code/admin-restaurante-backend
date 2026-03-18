@@ -14,13 +14,6 @@ import { Transform } from 'class-transformer';
 
 export class QueryProductDto {
   @IsUUID()
-  @ApiProperty({
-    description: 'ID del restaurante (requerido)',
-    example: '5a53d32f-834d-43df-a9ed-5db9b6badef9',
-  })
-  restaurant_id: string;
-
-  @IsUUID()
   @IsOptional()
   @ApiPropertyOptional({
     description: 'Filtrar por categoría específica',

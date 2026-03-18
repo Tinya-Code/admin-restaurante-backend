@@ -15,8 +15,6 @@ import { Transform } from 'class-transformer';
 
 export class CreateCategoryDto {
   @IsUUID()
-  @ApiProperty({ example: 'uuid-restaurant' })
-  restaurant_id: string;
 
   @IsUUID()
   @IsOptional()
@@ -53,8 +51,6 @@ export class CreateCategoryDto {
 }
 export class QueryCategoryDto {
   @IsUUID()
-  @ApiProperty({ example: 'uuid-restaurant' })
-  restaurant_id: string;
 
   @IsUUID()
   @IsOptional()
