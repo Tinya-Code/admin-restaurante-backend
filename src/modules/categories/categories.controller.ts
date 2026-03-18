@@ -11,7 +11,8 @@ import {
   ValidationPipe,
   ParseUUIDPipe,
   HttpStatus,
-  Res,
+  UseGuards,
+  HttpCode,
 } from '@nestjs/common';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
@@ -27,12 +28,19 @@ import {
   ApiCreatedResponse,
   ApiQuery,
   ApiParam,
+  ApiBearerAuth,
+  ApiHeader,
 } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { CategoryResponseDto } from './dto/category-response.dto';
 import { ApiResponse } from '../../common/dto/api-response.dto/api-response.dto';
+import { FirebaseAuthGuard } from 'src/common/guards/firebase-auth/firebase-auth.guard';
+import { RestaurantOwnerGuard } from 'src/common/guards/restaurant-owner/restaurant-owner.guard';
+import { CurrentRestaurant } from 'src/common/decorators/restaurant.decorator';
 
 @ApiTags('categories')
+@ApiBearerAuth()
+@UseGuards(FirebaseAuthGuard, RestaurantOwnerGuard)
 @Controller('api/v1/categories')
 export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
@@ -46,19 +54,24 @@ export class CategoriesController {
   @ApiConflictResponse({ description: 'Nombre duplicado para el restaurante' })
   @ApiBadRequestResponse({ description: 'Validación fallida' })
   @UsePipes(new ValidationPipe({ transform: true }))
-  async create(@Body() createCategoryDto: CreateCategoryDto) {
-    const category = await this.categoriesService.create(createCategoryDto);
+  async create(
+    @CurrentRestaurant() restaurantId: string,
+    @Body() createCategoryDto: CreateCategoryDto,
+  ) {
+    const category = await this.categoriesService.create(
+      restaurantId,
+      createCategoryDto,
+    );
     return new ApiResponse(category, 'Categoría creada exitosamente');
   }
 
   @Get()
   @ApiOperation({ summary: 'Listar categorías con paginación' })
   @SwaggerResponse({ status: 200, description: 'Listado de categorías' })
-  @ApiQuery({
-    name: 'restaurant_id',
-    required: true,
-    type: String,
-    example: '5a53d32f-834d-43df-a9ed-5db9b6badef9',
+  @ApiHeader({
+    name: 'x-restaurant-id',
+    required: false,
+    description: 'ID de restaurante opcional para sobrescribir el contexto automático',
   })
   @ApiQuery({
     name: 'menu_id',
@@ -82,8 +95,11 @@ export class CategoriesController {
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
   @UsePipes(new ValidationPipe({ transform: true }))
-  async findAll(@Query() query: QueryCategoryDto) {
-    const result = await this.categoriesService.findAll(query);
+  async findAll(
+    @CurrentRestaurant() restaurantId: string,
+    @Query() query: QueryCategoryDto,
+  ) {
+    const result = await this.categoriesService.findAll(restaurantId, query);
     return new ApiResponse(
       result.data,
       'Listado de categorías obtenido correctamente',
@@ -133,8 +149,9 @@ export class CategoriesController {
   }
 
   @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Eliminar una categoría' })
-  @SwaggerResponse({ status: 204, description: 'Eliminada correctamente' })
+  @SwaggerResponse({ status: HttpStatus.NO_CONTENT, description: 'Eliminada correctamente' })
   @ApiNotFoundResponse({ description: 'Categoría no encontrada' })
   @ApiParam({
     name: 'id',
@@ -143,11 +160,7 @@ export class CategoriesController {
   })
   async remove(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-    @Res() res: Response,
-  ) {
+  ): Promise<void> {
     await this.categoriesService.remove(id);
-    return res
-      .status(HttpStatus.NO_CONTENT)
-      .send(new ApiResponse(null, 'Categoría eliminada exitosamente'));
   }
 }

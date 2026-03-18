@@ -3,7 +3,8 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- Tabla: users
 CREATE TABLE users (
-    id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    firebase_uid TEXT UNIQUE,
     email TEXT NOT NULL,
     phone TEXT,
     display_name TEXT,
@@ -163,8 +164,8 @@ CREATE INDEX idx_products_price ON products (price);
 CREATE INDEX idx_products_created_at ON products (created_at);
 
 -- 1. Crear un usuario
-INSERT INTO users (id, email, display_name, created_at, updated_at)
-VALUES (gen_random_uuid(), 'admin@example.com', 'Admin', now(), now());
+INSERT INTO users (firebase_uid, email, display_name, created_at, updated_at)
+VALUES ('df47R6nUfYUgXnQFZ4FjLsA1vq12', 'alejandroleonpedro7@gmail.com', 'Admin', now(), now());
 
 -- 2. Crear un restaurante
 INSERT INTO restaurants (id, name, slug, owner_id, created_at, updated_at)

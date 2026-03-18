@@ -5,15 +5,22 @@ import {
   HttpStatus,
   Logger,
   Query,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiHeader, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ApiResponse as ApiResponseDto } from '../../common/dto/api-response.dto/api-response.dto';
 import { CategoriesCountResponseDto } from './dto/categories-count-response.dto';
 import { ProductsCountResponseDto } from './dto/products-count-response.dto';
 import { RecentProductsResponseDto } from './dto/recent-products-response.dto';
 import { StatisticsQueryDto } from './dto/statistics-query.dto';
 import { StatisticsService } from './statistics.service';
+import { FirebaseAuthGuard } from 'src/common/guards/firebase-auth/firebase-auth.guard';
+import { RestaurantOwnerGuard } from 'src/common/guards/restaurant-owner/restaurant-owner.guard';
+import { CurrentRestaurant } from 'src/common/decorators/restaurant.decorator';
 
+@ApiTags('Statistics')
+@ApiBearerAuth()
+@UseGuards(FirebaseAuthGuard, RestaurantOwnerGuard)
 @Controller('statistics')
 export class StatisticsController {
   private readonly logger = new Logger(StatisticsController.name);
@@ -21,15 +28,14 @@ export class StatisticsController {
 
   @Get('products/count')
   @ApiOperation({
-    summary: 'Get total products count for a restaurant',
+    summary: 'Get total products count',
     description:
-      'Returns the total number of products for a specific restaurant using the restaurant_id index for optimal performance',
+      'Returns the total number of products for the current restaurant',
   })
-  @ApiQuery({
-    name: 'restaurant_id',
-    type: String,
-    required: true,
-    description: 'Restaurant UUID identifier',
+  @ApiHeader({
+    name: 'x-restaurant-id',
+    required: false,
+    description: 'ID de restaurante opcional para sobrescribir el contexto automático',
   })
   @ApiResponse({
     status: 200,
@@ -66,21 +72,22 @@ export class StatisticsController {
         error: {
           code: '404',
           message:
-            'No restaurant found with id: 550e8400-e29b-41d4-a716-446655440000',
+            'No restaurant found for the provided context',
         },
       },
     },
   })
   async getProductsCount(
+    @CurrentRestaurant() restaurantId: string,
     @Query() query: StatisticsQueryDto,
   ): Promise<ApiResponseDto<ProductsCountResponseDto>> {
     try {
       this.logger.log(
-        `Getting products count for restaurant: ${query.restaurant_id}`,
+        `Getting products count for restaurant: ${restaurantId}`,
       );
 
       const data = await this.statisticsService.getProductsCount(
-        query.restaurant_id,
+        restaurantId,
       );
 
            return new ApiResponseDto(
@@ -111,15 +118,14 @@ export class StatisticsController {
 
   @Get('categories/count')
   @ApiOperation({
-    summary: 'Get total categories count for a restaurant',
+    summary: 'Get total categories count',
     description:
-      'Returns the total number of categories for a specific restaurant using the restaurant_id index for optimal performance',
+      'Returns the total number of categories for the current restaurant',
   })
-  @ApiQuery({
-    name: 'restaurant_id',
-    type: String,
-    required: true,
-    description: 'Restaurant UUID identifier',
+  @ApiHeader({
+    name: 'x-restaurant-id',
+    required: false,
+    description: 'ID de restaurante opcional para sobrescribir el contexto automático',
   })
   @ApiResponse({
     status: 200,
@@ -135,15 +141,16 @@ export class StatisticsController {
     description: 'Restaurant not found',
   })
   async getCategoriesCount(
+    @CurrentRestaurant() restaurantId: string,
     @Query() query: StatisticsQueryDto,
   ): Promise<ApiResponseDto<CategoriesCountResponseDto>> {
     try {
       this.logger.log(
-        `Getting categories count for restaurant: ${query.restaurant_id}`,
+        `Getting categories count for restaurant: ${restaurantId}`,
       );
 
       const data = await this.statisticsService.getCategoriesCount(
-        query.restaurant_id,
+        restaurantId,
       );
 
       return new ApiResponseDto(
@@ -174,15 +181,14 @@ export class StatisticsController {
 
   @Get('products/recent')
   @ApiOperation({
-    summary: 'Get recent products for a restaurant',
+    summary: 'Get recent products',
     description:
-      'Returns the most recent products for a specific restaurant, ordered by creation date DESC using the created_at index for optimal performance',
+      'Returns the most recent products for the current restaurant, ordered by creation date DESC',
   })
-  @ApiQuery({
-    name: 'restaurant_id',
-    type: String,
-    required: true,
-    description: 'Restaurant UUID identifier',
+  @ApiHeader({
+    name: 'x-restaurant-id',
+    required: false,
+    description: 'ID de restaurante opcional para sobrescribir el contexto automático',
   })
   @ApiQuery({
     name: 'limit',
@@ -205,15 +211,16 @@ export class StatisticsController {
     description: 'Restaurant not found',
   })
   async getRecentProducts(
+    @CurrentRestaurant() restaurantId: string,
     @Query() query: StatisticsQueryDto,
   ): Promise<ApiResponseDto<RecentProductsResponseDto>> {
     try {
       this.logger.log(
-        `Getting recent products for restaurant: ${query.restaurant_id}, limit: ${query.limit}`,
+        `Getting recent products for restaurant: ${restaurantId}, limit: ${query.limit}`,
       );
 
       const data = await this.statisticsService.getRecentProducts(
-        query.restaurant_id,
+        restaurantId,
         query.limit,
       );
 

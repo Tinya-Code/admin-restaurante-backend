@@ -9,8 +9,7 @@ import {
 import { Type } from 'class-transformer';
 
 export class QueryCategoryDto {
-  @IsString()
-  restaurant_id: string;
+  @IsOptional()
 
   @IsOptional()
   @IsString()

@@ -33,6 +33,13 @@ export class AuthController {
   @ApiResponse({ status: 200, type: AuthUserDto })
   @ApiUnauthorizedResponse({ description: 'Invalid token or user not registered' })
   async login(@CurrentUser() user: AuthenticatedUser): Promise<AuthUserDto> {
-    return this.authService.validateAndGetUser(user);
+    // El FirebaseAuthGuard ya validó al usuario y lo enriqueció en el request
+    return {
+      id: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      photoUrl: user.photoUrl,
+      createdAt: user.createdAt,
+    };
   }
 }

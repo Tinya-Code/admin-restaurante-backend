@@ -7,29 +7,35 @@ import {
   Logger,
   Param,
   Put,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiHeader, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ApiResponse as ApiResponseDto } from '../../common/dto/api-response.dto/api-response.dto';
 import { RestaurantSettingsResponseDto } from './dto/restaurant-settings-response.dto';
 import { UpdateRestaurantSettingsDto } from './dto/update-restaurant-settings.dto';
 import { SettingsService } from './settings.service';
+import { FirebaseAuthGuard } from 'src/common/guards/firebase-auth/firebase-auth.guard';
+import { RestaurantOwnerGuard } from 'src/common/guards/restaurant-owner/restaurant-owner.guard';
+import { CurrentRestaurant } from 'src/common/decorators/restaurant.decorator';
 
+@ApiTags('Settings')
+@ApiBearerAuth()
+@UseGuards(FirebaseAuthGuard, RestaurantOwnerGuard)
 @Controller('business-settings')
 export class SettingsController {
   private readonly logger = new Logger(SettingsController.name);
   constructor(private readonly settingsService: SettingsService) {}
 
-  @Get(':id')
+  @Get()
+  @ApiHeader({
+    name: 'x-restaurant-id',
+    required: false,
+    description: 'ID de restaurante opcional',
+  })
   @ApiOperation({
     summary: 'Get business settings for a restaurant',
     description:
-      'Returns the business settings for a specific restaurant. If no settings exist, returns default settings.',
-  })
-  @ApiParam({
-    name: 'id',
-    type: String,
-    required: true,
-    description: 'Restaurant UUID identifier',
+      'Returns the business settings for the current restaurant context. If no settings exist, returns default settings.',
   })
   @ApiResponse({
     status: 200,
@@ -72,12 +78,12 @@ export class SettingsController {
     },
   })
   async getBusinessSettings(
-    @Param('id') id: string,
+    @CurrentRestaurant() restaurantId: string,
   ): Promise<ApiResponseDto<RestaurantSettingsResponseDto>> {
     try {
-      this.logger.log(`Getting business settings for restaurant: ${id}`);
+      this.logger.log(`Getting business settings for restaurant: ${restaurantId}`);
 
-      const data = await this.settingsService.getBusinessSettings(id);
+      const data = await this.settingsService.getBusinessSettings(restaurantId);
 
       return new ApiResponseDto(
         data,
@@ -105,17 +111,16 @@ export class SettingsController {
     }
   }
 
-  @Put(':id')
+  @Put()
+  @ApiHeader({
+    name: 'x-restaurant-id',
+    required: false,
+    description: 'ID de restaurante opcional',
+  })
   @ApiOperation({
     summary: 'Update business settings for a restaurant',
     description:
-      'Updates the business settings for a specific restaurant. Creates new settings if none exist. Only provided fields will be updated.',
-  })
-  @ApiParam({
-    name: 'id',
-    type: String,
-    required: true,
-    description: 'Restaurant UUID identifier',
+      'Updates the business settings for the current restaurant context. Creates new settings if none exist. Only provided fields will be updated.',
   })
   @ApiResponse({
     status: 200,
@@ -131,14 +136,14 @@ export class SettingsController {
     description: 'Restaurant not found',
   })
   async updateBusinessSettings(
-    @Param('id') id: string,
+    @CurrentRestaurant() restaurantId: string,
     @Body() updateData: UpdateRestaurantSettingsDto,
   ): Promise<ApiResponseDto<RestaurantSettingsResponseDto>> {
     try {
-      this.logger.log(`Updating business settings for restaurant: ${id}`);
+      this.logger.log(`Updating business settings for restaurant: ${restaurantId}`);
 
       const data = await this.settingsService.updateBusinessSettings(
-        id,
+        restaurantId,
         updateData,
       );
 

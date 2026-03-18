@@ -13,6 +13,7 @@ import {
   ValidationPipe,
   UseInterceptors,
   UploadedFile,
+  UseGuards,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
@@ -25,6 +26,8 @@ import {
   ApiNotFoundResponse,
   ApiConsumes,
   ApiBody,
+  ApiBearerAuth,
+  ApiHeader,
 } from '@nestjs/swagger';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -33,8 +36,13 @@ import { QueryProductDto } from './dto/query-product.dto';
 import { ReorderProductsDto } from './dto/reorder-products.dto';
 import { Product } from './entities/product.entity';
 import { ApiResponse } from 'src/common/dto/api-response.dto/api-response.dto';
+import { FirebaseAuthGuard } from 'src/common/guards/firebase-auth/firebase-auth.guard';
+import { RestaurantOwnerGuard } from 'src/common/guards/restaurant-owner/restaurant-owner.guard';
+import { CurrentRestaurant } from 'src/common/decorators/restaurant.decorator';
 
 @ApiTags('Products')
+@ApiBearerAuth()
+@UseGuards(FirebaseAuthGuard, RestaurantOwnerGuard)
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
@@ -59,6 +67,7 @@ export class ProductsController {
   })
   @UseInterceptors(FileInterceptor('image'))
   async create(
+    @CurrentRestaurant() restaurantId: string,
     @Body(new ValidationPipe({ transform: true, whitelist: true }))
     createProductDto: CreateProductDto,
     @UploadedFile() file?: Express.Multer.File,
@@ -68,7 +77,10 @@ export class ProductsController {
       createProductDto.image = base64Image;
     }
 
-    const product = await this.productsService.create(createProductDto);
+    const product = await this.productsService.create(
+      restaurantId,
+      createProductDto,
+    );
     return new ApiResponse(product, 'Producto creado exitosamente');
   }
 
@@ -79,11 +91,10 @@ export class ProductsController {
     description:
       'Obtiene una lista paginada de productos con filtros opcionales por categoría, disponibilidad y rango de precios.',
   })
-  @ApiQuery({
-    name: 'restaurant_id',
-    required: true,
-    description: 'ID del restaurante (requerido)',
-    example: '5a53d32f-834d-43df-a9ed-5db9b6badef9',
+  @ApiHeader({
+    name: 'x-restaurant-id',
+    required: false,
+    description: 'ID de restaurante opcional para sobrescribir el contexto automático',
   })
   @ApiQuery({
     name: 'category_id',
@@ -148,10 +159,14 @@ export class ProductsController {
     description: 'Parámetros de query inválidos',
   })
   async findAll(
+    @CurrentRestaurant() restaurantId: string,
     @Query(new ValidationPipe({ transform: true, whitelist: true }))
     queryDto: QueryProductDto,
   ): Promise<ApiResponse<Product[]>> {
-    const { data, meta } = await this.productsService.findAll(queryDto);
+    const { data, meta } = await this.productsService.findAll(
+      restaurantId,
+      queryDto,
+    );
     return new ApiResponse(data, 'Productos obtenidos exitosamente', meta);
   }
 
@@ -193,7 +208,7 @@ export class ProductsController {
   @ApiOperation({
     summary: 'Actualizar un producto',
     description:
-      'Actualiza los campos de un producto. Si se envía una nueva imagen, la anterior se elimina de Cloudinary. No se puede cambiar el restaurant_id.',
+      'Actualiza los campos de un producto. Si se envía una nueva imagen, la anterior se elimina de Cloudinary.',
   })
   @ApiConsumes('multipart/form-data', 'application/json')
   @ApiParam({
@@ -329,10 +344,10 @@ export class ProductsController {
     description: 'Datos de reordenamiento inválidos',
   })
   async reorder(
-    @Body(new ValidationPipe({ transform: true }))
-    reorderDto: ReorderProductsDto,
-  ): Promise<ApiResponse<null>> {
-    await this.productsService.reorder(reorderDto.updates);
-    return new ApiResponse(null, 'Productos reordenados exitosamente');
+    @CurrentRestaurant() restaurantId: string,
+    @Body() reorderDto: ReorderProductsDto,
+  ): Promise<ApiResponse<any>> {
+    await this.productsService.reorder(restaurantId, reorderDto.updates);
+    return new ApiResponse(null, 'Orden de productos actualizado exitosamente');
   }
 }

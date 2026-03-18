@@ -7,10 +7,10 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions/all-excepti
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = new DocumentBuilder()
-    .setTitle('Cats example')
-    .setDescription('The cats API description')
+    .setTitle('Admin Restaurante API')
+    .setDescription('API para la gestión de restaurantes, menús, categorías y productos.')
     .setVersion('1.0')
-    .addTag('cats')
+    .addBearerAuth()
     .build();
   const documentFactory = () => SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, documentFactory);
@@ -27,21 +27,26 @@ async function bootstrap() {
     }),
   );
 
+  // Configurar CORS
   app.enableCors({
-    origin: (origin, callback) => {
-      const allowedOrigins = ['http://localhost:4200', 'http://localhost:3000'];
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('No permitido por CORS'));
-      }
-    },
+    origin: '*', // Permitir cualquier origen en desarrollo para diagnosticar
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'x-restaurant-id'],
   });
 
   app.useGlobalFilters(new AllExceptionsFilter());
-  await app.listen(process.env.PORT ?? 3000);
+  
+  // Agregar middleware para COOP (requerido para popups de Firebase)
+  app.use((req, res, next) => {
+    res.setHeader('Cross-Origin-Opener-Policy', 'unsafe-none'); // Desactivar temporalmente para ver si es el bloqueante
+    res.setHeader('Access-Control-Allow-Origin', '*'); // Forzar CORS extra
+    next();
+  });
+
+  const port = process.env.PORT ?? 3000;
+  await app.listen(port, '0.0.0.0');
+  console.log(`\n🚀 Nest application successfully started on: http://localhost:${port}`);
+  console.log(`📜 Swagger documentation: http://localhost:${port}/api\n`);
 }
 bootstrap();
