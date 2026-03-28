@@ -1,70 +1,117 @@
 {
   "user": {
-    "id": "9d3a857f-8678-471e-ba35-923e21f3f691",
-    "email": "admin@example.com",
+    "id": "9a543edd-3cf5-491b-ba9a-ddf553603938",
+    "email": "alejandroleonpedro7@gmail.com",
     "phone": null,
     "display_name": "Admin",
     "photo_url": null,
-    "created_at": "2026-02-07T03:18:23.806013+00:00",
-    "updated_at": "2026-02-07T03:18:23.806013+00:00"
+    "created_at": "2026-02-28T03:28:24.097231+00:00",
+    "updated_at": "2026-02-28T03:28:24.097231+00:00",
+    "firebase_uid": "df47R6nUfYUgXnQFZ4FjLsA1vq12"
   },
   "restaurants": [
     {
       "restaurant": {
-        "id": "5a53d32f-834d-43df-a9ed-5db9b6badef9",
+        "id": "803a50be-7740-4eaf-b399-2b1ad06f1406",
         "name": "Mi Restaurante",
         "slug": "mi-restaurante",
-        "owner_id": "9d3a857f-8678-471e-ba35-923e21f3f691",
+        "owner_id": "9a543edd-3cf5-491b-ba9a-ddf553603938",
         "plan_id": null,
         "template_id": null,
         "phone": null,
         "address": null,
         "logo_url": null,
         "is_active": true,
-        "created_at": "2026-02-07T03:18:23.806013+00:00",
-        "updated_at": "2026-02-07T03:18:23.806013+00:00"
+        "created_at": "2026-02-28T03:28:24.097231+00:00",
+        "updated_at": "2026-02-28T03:28:24.097231+00:00"
       },
-      "settings": null,
+      "settings": {
+        "id": "39ae2574-06c9-4eff-ad78-01e112508893",
+        "restaurant_id": "803a50be-7740-4eaf-b399-2b1ad06f1406",
+        "whatsapp_config": {
+          "number": "987654322",
+          "message_template": "Hola, me gustaría ordenar:"
+        },
+        "display_config": {
+          "theme": "light",
+          "colors": { "primary": "#FF6B6B", "secondary": "#4ECDC4" },
+          "currency": "PEN",
+          "language": "es",
+          "show_images": true,
+          "currency_symbol": "S/",
+          "show_categories": true,
+          "show_descriptions": true,
+          "show_availability_badge": true
+        },
+        "order_config": {
+          "enabled": true,
+          "delivery_fee": 5,
+          "pickup_enabled": true,
+          "payment_methods": ["cash", "card", "yape", "plin"],
+          "delivery_enabled": true,
+          "max_order_quantity": 10,
+          "accepts_reservations": true
+        },
+        "business_config": {
+          "social_media": {
+            "tiktok": "@mirestaurante",
+            "facebook": "https://facebook.com/mirestaurante",
+            "instagram": "@mirestaurante"
+          },
+          "business_hours": {
+            "friday": { "open": "10:00", "close": "22:00", "isOpen": true },
+            "monday": { "open": "09:00", "close": "19:00", "isOpen": true },
+            "sunday": { "open": "10:00", "close": "22:00", "isOpen": true },
+            "tuesday": { "open": "09:00", "close": "22:00", "isOpen": true },
+            "saturday": { "open": "09:00", "close": "22:00", "isOpen": true },
+            "thursday": { "open": "09:00", "close": "22:00", "isOpen": true },
+            "wednesday": { "open": "09:00", "close": "22:00", "isOpen": true }
+          },
+          "delivery_zones": []
+        },
+        "created_at": "2026-03-04T16:06:13.999+00:00",
+        "updated_at": "2026-03-23T05:28:43.86+00:00"
+      },
       "plan": null,
       "template": null,
       "menus": [
         {
           "menu": {
-            "id": "e61d4b41-4813-4be1-93db-79373f563580",
-            "restaurant_id": "5a53d32f-834d-43df-a9ed-5db9b6badef9",
+            "id": "de9a492f-8a1c-480e-a9ac-e4ee50036de6",
+            "restaurant_id": "803a50be-7740-4eaf-b399-2b1ad06f1406",
             "name": "Menú Principal",
             "description": null,
             "is_active": true,
             "display_order": 0,
-            "created_at": "2026-02-07T03:18:23.806013+00:00",
-            "updated_at": "2026-02-07T03:18:23.806013+00:00"
+            "created_at": "2026-02-28T03:28:24.097231+00:00",
+            "updated_at": "2026-02-28T03:28:24.097231+00:00"
           },
           "categories": [
             {
               "category": {
-                "id": "239f1742-fc12-4f17-bf2a-bd955890582b",
-                "restaurant_id": "5a53d32f-834d-43df-a9ed-5db9b6badef9",
-                "menu_id": "e61d4b41-4813-4be1-93db-79373f563580",
+                "id": "fb279896-3589-482c-9c0c-e91ccf1f6a32",
+                "restaurant_id": "803a50be-7740-4eaf-b399-2b1ad06f1406",
+                "menu_id": "de9a492f-8a1c-480e-a9ac-e4ee50036de6",
                 "name": "Bebidas Calientes",
                 "description": null,
                 "display_order": 0,
                 "is_active": true,
-                "created_at": "2026-02-07T03:18:23.806013+00:00",
-                "updated_at": "2026-02-07T03:18:23.806013+00:00"
+                "created_at": "2026-02-28T03:28:24.097231+00:00",
+                "updated_at": "2026-02-28T03:28:24.097231+00:00"
               },
               "products": [
                 {
-                  "id": "9c0b1132-c388-445d-8e47-08afe12a10ce",
-                  "restaurant_id": "5a53d32f-834d-43df-a9ed-5db9b6badef9",
-                  "category_id": "239f1742-fc12-4f17-bf2a-bd955890582b",
+                  "id": "eb9d9f1d-4438-44cf-848b-65202c0c06e4",
+                  "restaurant_id": "803a50be-7740-4eaf-b399-2b1ad06f1406",
+                  "category_id": "fb279896-3589-482c-9c0c-e91ccf1f6a32",
                   "name": "Café Americano",
                   "description": null,
-                  "price": 12.50,
+                  "price": 12.5,
                   "image_url": null,
                   "is_available": true,
                   "display_order": 0,
-                  "created_at": "2026-02-07T03:18:23.806013+00:00",
-                  "updated_at": "2026-02-07T03:18:23.806013+00:00"
+                  "created_at": "2026-02-28T03:28:24.097231+00:00",
+                  "updated_at": "2026-02-28T03:28:24.097231+00:00"
                 }
               ]
             }

@@ -37,11 +37,12 @@ import { ApiResponse } from '../../common/dto/api-response.dto/api-response.dto'
 import { FirebaseAuthGuard } from 'src/common/guards/firebase-auth/firebase-auth.guard';
 import { RestaurantOwnerGuard } from 'src/common/guards/restaurant-owner/restaurant-owner.guard';
 import { CurrentRestaurant } from 'src/common/decorators/restaurant.decorator';
+import { CurrentMenu } from 'src/common/decorators/menu.decorator';
 
 @ApiTags('categories')
 @ApiBearerAuth()
 @UseGuards(FirebaseAuthGuard, RestaurantOwnerGuard)
-@Controller('api/v1/categories')
+@Controller('categories')
 export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 
@@ -56,8 +57,10 @@ export class CategoriesController {
   @UsePipes(new ValidationPipe({ transform: true }))
   async create(
     @CurrentRestaurant() restaurantId: string,
+    @CurrentMenu() menuId: string,
     @Body() createCategoryDto: CreateCategoryDto,
   ) {
+    createCategoryDto.menu_id = createCategoryDto.menu_id ?? menuId;
     const category = await this.categoriesService.create(
       restaurantId,
       createCategoryDto,
@@ -68,11 +71,6 @@ export class CategoriesController {
   @Get()
   @ApiOperation({ summary: 'Listar categorías con paginación' })
   @SwaggerResponse({ status: 200, description: 'Listado de categorías' })
-  @ApiHeader({
-    name: 'x-restaurant-id',
-    required: false,
-    description: 'ID de restaurante opcional para sobrescribir el contexto automático',
-  })
   @ApiQuery({
     name: 'menu_id',
     required: false,
@@ -97,8 +95,10 @@ export class CategoriesController {
   @UsePipes(new ValidationPipe({ transform: true }))
   async findAll(
     @CurrentRestaurant() restaurantId: string,
+    @CurrentMenu() menuId: string,
     @Query() query: QueryCategoryDto,
   ) {
+    query.menu_id = query.menu_id ?? menuId;
     const result = await this.categoriesService.findAll(restaurantId, query);
     return new ApiResponse(
       result.data,
@@ -120,8 +120,11 @@ export class CategoriesController {
     type: String,
     example: 'c0a80123-4567-89ab-cdef-1234567890ab',
   })
-  async findOne(@Param('id', new ParseUUIDPipe({ version: '4' })) id: string) {
-    const category = await this.categoriesService.findOne(id);
+  async findOne(
+    @CurrentRestaurant() restaurantId: string,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+  ) {
+    const category = await this.categoriesService.findOne(restaurantId, id);
     return new ApiResponse(category, 'Categoría obtenida correctamente');
   }
 
@@ -141,10 +144,15 @@ export class CategoriesController {
   })
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async update(
+    @CurrentRestaurant() restaurantId: string,
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Body() updateCategoryDto: UpdateCategoryDto,
   ) {
-    const category = await this.categoriesService.update(id, updateCategoryDto);
+    const category = await this.categoriesService.update(
+      restaurantId,
+      id,
+      updateCategoryDto,
+    );
     return new ApiResponse(category, 'Categoría actualizada exitosamente');
   }
 
@@ -159,8 +167,9 @@ export class CategoriesController {
     example: 'c0a80123-4567-89ab-cdef-1234567890ab',
   })
   async remove(
+    @CurrentRestaurant() restaurantId: string,
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
   ): Promise<void> {
-    await this.categoriesService.remove(id);
+    await this.categoriesService.remove(restaurantId, id);
   }
 }

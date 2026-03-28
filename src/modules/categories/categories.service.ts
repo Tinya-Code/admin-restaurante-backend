@@ -38,18 +38,22 @@ export class CategoriesService {
     return { data, meta: buildPaginationMeta(total, page, limit) };
   }
 
-  async findOne(id: string): Promise<any> {
+  async findOne(restaurantId: string, id: string): Promise<any> {
     const category = await this.categoriesRepository.findById(id);
 
-    if (!category) {
-      throw new NotFoundException('Category not found');
+    if (!category || category.restaurant_id !== restaurantId) {
+      throw new NotFoundException('Category not found or does not belong to your restaurant');
     }
 
     return category;
   }
 
-  async update(id: string, dto: UpdateCategoryDto): Promise<any> {
-    const currentCategory = await this.findOne(id);
+  async update(
+    restaurantId: string,
+    id: string,
+    dto: UpdateCategoryDto,
+  ): Promise<any> {
+    const currentCategory = await this.findOne(restaurantId, id);
 
     if (dto.name && dto.name !== currentCategory.name) {
       const isDuplicate = await this.categoriesRepository.existsByNameExcludeId(
@@ -67,8 +71,8 @@ export class CategoriesService {
     return updated || currentCategory;
   }
 
-  async remove(id: string): Promise<{ message: string }> {
-    await this.findOne(id);
+  async remove(restaurantId: string, id: string): Promise<{ message: string }> {
+    await this.findOne(restaurantId, id);
     await this.categoriesRepository.delete(id);
     return { message: 'Category deleted successfully' };
   }
