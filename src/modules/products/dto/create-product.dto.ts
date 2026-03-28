@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiHideProperty } from '@nestjs/swagger';
 import {
   IsString,
   IsUUID,
@@ -60,10 +60,7 @@ export class CreateProductDto {
   @Matches(/^data:image\/(jpeg|jpg|png|gif|webp);base64,/, {
     message: 'La imagen debe estar en formato base64 válido',
   })
-  @ApiPropertyOptional({
-    description: 'Imagen del producto en base64 (data:image/png;base64,...)',
-    example: 'data:image/png;base64,iVBORw0KGgo...',
-  })
+  @ApiHideProperty()
   image?: string;
 
   @IsBoolean()
