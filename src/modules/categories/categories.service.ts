@@ -6,7 +6,7 @@ import {
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { QueryCategoryDto } from './dto/query-category.dto';
-import { buildPaginationMeta } from '../../common/pagination.helper';
+import { PaginationMetaDto } from '../../common/dto/pagination-meta.dto/pagination-meta.dto';
 import { CategoriesRepository } from './categories.repository';
 
 @Injectable()
@@ -35,7 +35,10 @@ export class CategoriesService {
     );
 
     const { page = 1, limit = 10 } = query;
-    return { data, meta: buildPaginationMeta(total, page, limit) };
+    return { 
+      data, 
+      meta: new PaginationMetaDto(page, limit, total, query.sort_by || 'display_order', query.order || 'ASC') 
+    };
   }
 
   async findOne(restaurantId: string, id: string): Promise<any> {
