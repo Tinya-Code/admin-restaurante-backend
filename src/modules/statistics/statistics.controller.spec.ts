@@ -46,9 +46,10 @@ describe('StatisticsController', () => {
 
       jest.spyOn(service, 'getProductsCount').mockResolvedValue(expectedResult);
 
-      const result = await controller.getProductsCount({
-        restaurant_id: mockRestaurantId,
-      });
+      const result = await controller.getProductsCount(
+        mockRestaurantId,
+        {},
+      );
 
       expect(result).toEqual({
         status: 'success',
@@ -69,7 +70,7 @@ describe('StatisticsController', () => {
         );
 
       await expect(
-        controller.getProductsCount({ restaurant_id: mockRestaurantId }),
+        controller.getProductsCount(mockRestaurantId, {}),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -79,7 +80,7 @@ describe('StatisticsController', () => {
         .mockRejectedValue(new Error('Database error'));
 
       await expect(
-        controller.getProductsCount({ restaurant_id: mockRestaurantId }),
+        controller.getProductsCount(mockRestaurantId, {}),
       ).rejects.toThrow(HttpException);
     });
   });
@@ -95,9 +96,10 @@ describe('StatisticsController', () => {
         .spyOn(service, 'getCategoriesCount')
         .mockResolvedValue(expectedResult);
 
-      const result = await controller.getCategoriesCount({
-        restaurant_id: mockRestaurantId,
-      });
+      const result = await controller.getCategoriesCount(
+        mockRestaurantId,
+        {},
+      );
 
       expect(result).toEqual({
         status: 'success',
@@ -118,7 +120,7 @@ describe('StatisticsController', () => {
         );
 
       await expect(
-        controller.getCategoriesCount({ restaurant_id: mockRestaurantId }),
+        controller.getCategoriesCount(mockRestaurantId, {}),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -128,7 +130,7 @@ describe('StatisticsController', () => {
         .mockRejectedValue(new Error('Database error'));
 
       await expect(
-        controller.getCategoriesCount({ restaurant_id: mockRestaurantId }),
+        controller.getCategoriesCount(mockRestaurantId, {}),
       ).rejects.toThrow(HttpException);
     });
   });
@@ -152,9 +154,10 @@ describe('StatisticsController', () => {
         .spyOn(service, 'getRecentProducts')
         .mockResolvedValue(expectedResult);
 
-      const result = await controller.getRecentProducts({
-        restaurant_id: mockRestaurantId,
-      });
+      const result = await controller.getRecentProducts(
+        mockRestaurantId,
+        {},
+      );
 
       expect(result).toEqual({
         status: 'success',
@@ -178,10 +181,10 @@ describe('StatisticsController', () => {
         .spyOn(service, 'getRecentProducts')
         .mockResolvedValue(expectedResult);
 
-      const result = await controller.getRecentProducts({
-        restaurant_id: mockRestaurantId,
-        limit: 10,
-      });
+      const result = await controller.getRecentProducts(
+        mockRestaurantId,
+        { limit: 10 },
+      );
 
       expect(result).toEqual({
         status: 'success',
@@ -205,7 +208,7 @@ describe('StatisticsController', () => {
         );
 
       await expect(
-        controller.getRecentProducts({ restaurant_id: mockRestaurantId }),
+        controller.getRecentProducts(mockRestaurantId, {}),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -215,7 +218,7 @@ describe('StatisticsController', () => {
         .mockRejectedValue(new Error('Database error'));
 
       await expect(
-        controller.getRecentProducts({ restaurant_id: mockRestaurantId }),
+        controller.getRecentProducts(mockRestaurantId, {}),
       ).rejects.toThrow(HttpException);
     });
   });

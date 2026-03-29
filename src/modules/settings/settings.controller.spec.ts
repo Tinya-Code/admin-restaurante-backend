@@ -44,7 +44,7 @@ describe('SettingsController', () => {
         whatsapp_config: { enabled: true, phone: '+1234567890' },
         display_config: { theme: 'dark', language: 'en' },
         order_config: { autoConfirm: false, preparationTime: 15 },
-        business_config: { name: 'Test Restaurant', currency: 'USD' },
+        business_config: { timezone: 'America/Lima' },
         created_at: '2024-02-21T15:06:00.000Z',
         updated_at: '2024-02-21T15:06:00.000Z',
       };
@@ -94,7 +94,7 @@ describe('SettingsController', () => {
     it('should update business settings successfully', async () => {
       const updateData: UpdateRestaurantSettingsDto = {
         whatsapp_config: { enabled: false },
-        business_config: { name: 'Updated Restaurant' },
+        business_config: { timezone: 'America/Bogota' },
       };
 
       const expectedResult: RestaurantSettingsResponseDto = {
@@ -102,7 +102,7 @@ describe('SettingsController', () => {
         whatsapp_config: { enabled: false, phone: '+1234567890' },
         display_config: { theme: 'dark', language: 'en' },
         order_config: { autoConfirm: false, preparationTime: 15 },
-        business_config: { name: 'Updated Restaurant', currency: 'USD' },
+        business_config: { timezone: 'America/Bogota' },
         created_at: '2024-02-21T15:06:00.000Z',
         updated_at: '2024-02-21T16:00:00.000Z',
       };
