@@ -10,8 +10,6 @@ import { Type } from 'class-transformer';
 
 export class QueryCategoryDto {
   @IsOptional()
-
-  @IsOptional()
   @IsString()
   menu_id?: string;
 

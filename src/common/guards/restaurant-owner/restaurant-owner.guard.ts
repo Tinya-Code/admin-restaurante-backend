@@ -69,6 +69,33 @@ export class RestaurantOwnerGuard implements CanActivate {
     // 4. Attach to request for use in decorators/controllers
     request.restaurantId = restaurantId;
 
+    // 5. Resolve menu_id context
+    const headerMenuId = request.headers['x-menu-id'];
+    let menuId: string | null = null;
+    let menu: any;
+
+    if (headerMenuId) {
+      menuId = headerMenuId as string;
+      menu = await this.db.findOne('menus', { id: menuId });
+
+      if (!menu || menu.restaurant_id !== restaurantId) {
+        throw new NotFoundException(`Menu with ID ${menuId} not found or doesn't belong to the restaurant`);
+      }
+    } else {
+      const restaurantMenus = await this.db.findAll('menus', {
+        restaurant_id: restaurantId,
+      });
+
+      if (restaurantMenus.length > 0) {
+        // Default to the first one found (usually sorted by DB creation, or we can sort later if needed)
+        // Here we just grab the first one to give a default context
+        menu = restaurantMenus[0];
+        menuId = menu.id;
+      }
+    }
+
+    request.menuId = menuId;
+
     return true;
   }
 }
