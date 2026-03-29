@@ -27,11 +27,7 @@ export class SettingsController {
   constructor(private readonly settingsService: SettingsService) {}
 
   @Get()
-  @ApiHeader({
-    name: 'x-restaurant-id',
-    required: false,
-    description: 'ID de restaurante opcional',
-  })
+
   @ApiOperation({
     summary: 'Get business settings for a restaurant',
     description:
@@ -112,11 +108,7 @@ export class SettingsController {
   }
 
   @Put()
-  @ApiHeader({
-    name: 'x-restaurant-id',
-    required: false,
-    description: 'ID de restaurante opcional',
-  })
+
   @ApiOperation({
     summary: 'Update business settings for a restaurant',
     description:

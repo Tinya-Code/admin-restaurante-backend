@@ -32,11 +32,7 @@ export class StatisticsController {
     description:
       'Returns the total number of products for the current restaurant',
   })
-  @ApiHeader({
-    name: 'x-restaurant-id',
-    required: false,
-    description: 'ID de restaurante opcional para sobrescribir el contexto automático',
-  })
+
   @ApiResponse({
     status: 200,
     description: 'Products count retrieved successfully',
@@ -122,11 +118,7 @@ export class StatisticsController {
     description:
       'Returns the total number of categories for the current restaurant',
   })
-  @ApiHeader({
-    name: 'x-restaurant-id',
-    required: false,
-    description: 'ID de restaurante opcional para sobrescribir el contexto automático',
-  })
+
   @ApiResponse({
     status: 200,
     description: 'Categories count retrieved successfully',
@@ -185,11 +177,7 @@ export class StatisticsController {
     description:
       'Returns the most recent products for the current restaurant, ordered by creation date DESC',
   })
-  @ApiHeader({
-    name: 'x-restaurant-id',
-    required: false,
-    description: 'ID de restaurante opcional para sobrescribir el contexto automático',
-  })
+
   @ApiQuery({
     name: 'limit',
     type: Number,

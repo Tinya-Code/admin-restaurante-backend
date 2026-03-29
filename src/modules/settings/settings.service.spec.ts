@@ -101,7 +101,7 @@ describe('SettingsService', () => {
     it('should update existing business settings', async () => {
       const updateData: UpdateRestaurantSettingsDto = {
         whatsapp_config: { enabled: false },
-        business_config: { name: 'Updated Restaurant' },
+        business_config: { timezone: 'America/Lima' },
       };
 
       const existingSettings = {
