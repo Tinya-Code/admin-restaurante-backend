@@ -113,6 +113,24 @@ CREATE TABLE products (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE banners (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    restaurant_id UUID NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+    image_url TEXT NOT NULL,
+    description TEXT,
+    display_order INTEGER NOT NULL DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Índices para banners
+CREATE INDEX idx_banners_restaurant_id ON banners (restaurant_id);
+CREATE INDEX idx_banners_is_active ON banners (is_active) WHERE is_active = true;
+CREATE INDEX idx_banners_display_order ON banners (restaurant_id, display_order);
+CREATE INDEX idx_banners_created_at ON banners (created_at);
+
+
 -- Índices para users
 CREATE UNIQUE INDEX idx_users_email_lower ON users (LOWER(email));
 CREATE INDEX idx_users_phone ON users (phone) WHERE phone IS NOT NULL;
@@ -214,6 +232,11 @@ SELECT json_build_object(
       'settings', rs,
       'plan', pl,
       'template', t,
+      'banners', (
+        SELECT json_agg(b)
+        FROM banners b
+        WHERE b.restaurant_id = r.id
+      ),
       'menus', (
         SELECT json_agg(
           json_build_object(
@@ -246,6 +269,7 @@ LEFT JOIN restaurant_settings rs ON rs.restaurant_id = r.id
 LEFT JOIN plans pl ON r.plan_id = pl.id
 LEFT JOIN templates t ON r.template_id = t.id
 GROUP BY u.id;
+
 
 
 
