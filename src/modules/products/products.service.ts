@@ -24,22 +24,26 @@ export class ProductsService {
   ): Promise<Product> {
     await this.validateCategory(dto.category_id, restaurantId);
 
+    // DESHABILITADO TEMPORALMENTE: Se manejarán imágenes en el futuro
     let image_url: string | null = null;
+    /*
     if (dto.image) {
       image_url = await this.uploadProductImage(dto.image);
     }
+    */
 
     try {
       const { image, price, ...productData } = dto;
       const payload: Partial<Product> = {
         ...productData,
         price: price?.toString(),
-        image_url,
+        // image_url, // No guardar image_url por ahora
       };
       return await this.productsRepository.create(restaurantId, payload);
     } catch (error) {
+      /*
       if (image_url) await this.cloudinaryService.deleteImage(image_url);
-      
+      */
       if (error.code === '23514') {
         throw new BadRequestException('El precio debe ser mayor o igual a 0');
       }
@@ -62,42 +66,48 @@ export class ProductsService {
     return { data, meta };
   }
 
-  async findOne(id: string): Promise<Product> {
+  async findOne(restaurantId: string, id: string): Promise<Product> {
     const product = await this.productsRepository.findById(id);
-    if (!product) {
-      throw new NotFoundException(`Producto con ID ${id} no encontrado`);
+    if (!product || product.restaurant_id !== restaurantId) {
+      throw new NotFoundException(`Producto con ID ${id} no encontrado o no pertenece al restaurante`);
     }
     return product;
   }
 
   async update(
+    restaurantId: string,
     id: string,
     dto: UpdateProductDto,
   ): Promise<Product> {
-    const existingProduct = await this.findOne(id);
+    const existingProduct = await this.findOne(restaurantId, id);
 
     if (dto.category_id) {
       await this.validateCategory(dto.category_id, existingProduct.restaurant_id);
     }
 
+    // DESHABILITADO TEMPORALMENTE: Se manejarán imágenes en el futuro
     let new_image_url: string | null = null;
+    /*
     if (dto.image) {
       new_image_url = await this.uploadProductImage(dto.image);
       if (existingProduct.image_url) {
         await this.cloudinaryService.deleteImage(existingProduct.image_url);
       }
     }
+    */
 
     try {
       const { image, price, ...updateData } = dto;
       const updatedFields: Partial<Product> = { ...updateData } as any;
       if (price !== undefined) updatedFields.price = price.toString();
-      if (new_image_url) updatedFields.image_url = new_image_url;
+      // if (new_image_url) updatedFields.image_url = new_image_url;
       updatedFields.updated_at = new Date();
 
       return await this.productsRepository.update(id, updatedFields);
     } catch (error) {
+      /*
       if (new_image_url) await this.cloudinaryService.deleteImage(new_image_url);
+      */
       if (error.code === '23514') {
         throw new BadRequestException('El precio debe ser mayor o igual a 0');
       }
@@ -105,15 +115,16 @@ export class ProductsService {
     }
   }
 
-  async remove(id: string): Promise<void> {
-    const product = await this.findOne(id);
+  async remove(restaurantId: string, id: string): Promise<void> {
+    const product = await this.findOne(restaurantId, id);
     if (product.image_url) {
       await this.cloudinaryService.deleteImage(product.image_url);
     }
     await this.productsRepository.delete(id);
   }
 
-  async softRemove(id: string): Promise<Product> {
+  async softRemove(restaurantId: string, id: string): Promise<Product> {
+    await this.findOne(restaurantId, id);
     return this.productsRepository.update(id, { is_available: false });
   }
 
