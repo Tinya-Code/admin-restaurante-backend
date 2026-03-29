@@ -51,32 +51,24 @@ export class ProductsController {
   @ApiOperation({
     summary: 'Crear un nuevo producto',
     description:
-      'Crea un producto. Si se proporciona una imagen, se sube automáticamente a Cloudinary.',
+      'Crea un producto. (La subida de imágenes está temporalmente deshabilitada, enviar json normal).',
   })
-  @ApiConsumes('multipart/form-data', 'application/json')
   @SwaggerResponse({
     status: HttpStatus.CREATED,
     description: 'Producto creado exitosamente',
     type: Product,
   })
   @ApiBadRequestResponse({
-    description: 'Datos inválidos, precio negativo o error al subir imagen',
+    description: 'Datos inválidos o precio negativo',
   })
   @ApiNotFoundResponse({
     description: 'Categoría no encontrada o no pertenece al restaurante',
   })
-  @UseInterceptors(FileInterceptor('image'))
   async create(
     @CurrentRestaurant() restaurantId: string,
     @Body(new ValidationPipe({ transform: true, whitelist: true }))
     createProductDto: CreateProductDto,
-    @UploadedFile() file?: Express.Multer.File,
   ): Promise<ApiResponse<Product>> {
-    if (file) {
-      const base64Image = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
-      createProductDto.image = base64Image;
-    }
-
     const product = await this.productsService.create(
       restaurantId,
       createProductDto,
@@ -90,11 +82,6 @@ export class ProductsController {
     summary: 'Listar productos con filtros y paginación',
     description:
       'Obtiene una lista paginada de productos con filtros opcionales por categoría, disponibilidad y rango de precios.',
-  })
-  @ApiHeader({
-    name: 'x-restaurant-id',
-    required: false,
-    description: 'ID de restaurante opcional para sobrescribir el contexto automático',
   })
   @ApiQuery({
     name: 'category_id',
@@ -194,9 +181,10 @@ export class ProductsController {
     description: 'Producto no encontrado',
   })
   async findOne(
+    @CurrentRestaurant() restaurantId: string,
     @Param('id', new ParseUUIDPipe()) id: string,
   ): Promise<ApiResponse<Product>> {
-    const product = await this.productsService.findOne(id);
+    const product = await this.productsService.findOne(restaurantId, id);
     return new ApiResponse(product, 'Producto obtenido exitosamente');
   }
 
@@ -208,9 +196,8 @@ export class ProductsController {
   @ApiOperation({
     summary: 'Actualizar un producto',
     description:
-      'Actualiza los campos de un producto. Si se envía una nueva imagen, la anterior se elimina de Cloudinary.',
+      'Actualiza los campos de un producto. (La subida de imágenes está temporalmente deshabilitada).',
   })
-  @ApiConsumes('multipart/form-data', 'application/json')
   @ApiParam({
     name: 'id',
     description: 'ID del producto a actualizar',
@@ -228,20 +215,13 @@ export class ProductsController {
   @ApiNotFoundResponse({
     description: 'Producto o categoría no encontrada',
   })
-  @UseInterceptors(FileInterceptor('image'))
   async update(
+    @CurrentRestaurant() restaurantId: string,
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body(new ValidationPipe({ transform: true, whitelist: true }))
     updateProductDto: UpdateProductDto,
-    @UploadedFile() file?: Express.Multer.File,
   ): Promise<ApiResponse<Product>> {
-    // Si viene archivo multipart, convertir a base64
-    if (file) {
-      const base64Image = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
-      updateProductDto['image'] = base64Image;
-    }
-
-    const product = await this.productsService.update(id, updateProductDto);
+    const product = await this.productsService.update(restaurantId, id, updateProductDto);
     return new ApiResponse(product, 'Producto actualizado exitosamente');
   }
 
@@ -268,8 +248,11 @@ export class ProductsController {
   @ApiNotFoundResponse({
     description: 'Producto no encontrado',
   })
-  async remove(@Param('id', new ParseUUIDPipe()) id: string): Promise<void> {
-    await this.productsService.remove(id);
+  async remove(
+    @CurrentRestaurant() restaurantId: string,
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ): Promise<void> {
+    await this.productsService.remove(restaurantId, id);
   }
 
   /**
@@ -296,9 +279,10 @@ export class ProductsController {
     description: 'Producto no encontrado',
   })
   async softRemove(
+    @CurrentRestaurant() restaurantId: string,
     @Param('id', new ParseUUIDPipe()) id: string,
   ): Promise<ApiResponse<Product>> {
-    const product = await this.productsService.softRemove(id);
+    const product = await this.productsService.softRemove(restaurantId, id);
     return new ApiResponse(product, 'Producto deshabilitado exitosamente');
   }
 
