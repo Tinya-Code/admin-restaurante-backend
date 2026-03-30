@@ -4,9 +4,10 @@ import { SettingsService } from './settings.service';
 import { DatabaseModule } from 'src/database/database.module';
 import { FirebaseModule } from 'src/firebase/firebase.module';
 import { AuthModule } from '../auth/auth.module';
+import { CloudinaryModule } from 'src/cloudinary/cloudinary.module';
 
 @Module({
-  imports: [DatabaseModule, FirebaseModule, AuthModule],
+  imports: [DatabaseModule, FirebaseModule, AuthModule, CloudinaryModule],
   controllers: [SettingsController],
   providers: [SettingsService],
 })
