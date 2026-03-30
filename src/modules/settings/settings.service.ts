@@ -2,12 +2,19 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
 import { RestaurantSettingsResponseDto } from './dto/restaurant-settings-response.dto';
 import { UpdateRestaurantSettingsDto } from './dto/update-restaurant-settings.dto';
+import { BannerResponseDto } from './dto/banner-response.dto';
+import { CreateBannerDto } from './dto/create-banner.dto';
+import { UpdateBannerDto } from './dto/update-banner.dto';
+import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
 
 @Injectable()
 export class SettingsService {
   private readonly logger = new Logger(SettingsService.name);
 
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
 
   async getBusinessSettings(
     restaurantId: string,
@@ -164,5 +171,128 @@ export class SettingsService {
     }
 
     return result.rows[0];
+  }
+
+  // --- Banners Methods ---
+
+  async getBanners(restaurantId: string): Promise<BannerResponseDto[]> {
+    this.logger.log(`Getting banners for restaurant: ${restaurantId}`);
+    
+    const result = await this.databaseService.query<BannerResponseDto>(
+      'SELECT * FROM banners WHERE restaurant_id = $1 ORDER BY display_order ASC, created_at DESC',
+      [restaurantId],
+    );
+    
+    return result.rows;
+  }
+
+  async createBanner(
+    restaurantId: string,
+    createDto: CreateBannerDto,
+  ): Promise<BannerResponseDto> {
+    this.logger.log(`Creating banner for restaurant: ${restaurantId}`);
+
+    // Upload image to Cloudinary
+    const uploadResult = await this.cloudinaryService.uploadImage(
+      createDto.image_base64,
+      'banners',
+    );
+
+    const result = await this.databaseService.query<BannerResponseDto>(
+      `INSERT INTO banners (restaurant_id, image_url, description, display_order)
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+      [
+        restaurantId,
+        uploadResult.secure_url,
+        createDto.description || null,
+        createDto.display_order || 0,
+      ],
+    );
+
+    return result.rows[0];
+  }
+
+  async updateBanner(
+    restaurantId: string,
+    bannerId: string,
+    updateDto: UpdateBannerDto,
+  ): Promise<BannerResponseDto> {
+    this.logger.log(`Updating banner ${bannerId} for restaurant: ${restaurantId}`);
+
+    const fields: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+
+    if (updateDto.description !== undefined) {
+      fields.push(`description = $${idx++}`);
+      values.push(updateDto.description);
+    }
+    if (updateDto.display_order !== undefined) {
+      fields.push(`display_order = $${idx++}`);
+      values.push(updateDto.display_order);
+    }
+    if (updateDto.is_active !== undefined) {
+      fields.push(`is_active = $${idx++}`);
+      values.push(updateDto.is_active);
+    }
+
+    if (fields.length === 0) {
+      const current = await this.databaseService.query<BannerResponseDto>(
+        'SELECT * FROM banners WHERE id = $1 AND restaurant_id = $2',
+        [bannerId, restaurantId],
+      );
+      if (current.rows.length === 0) throw new NotFoundException('Banner not found');
+      return current.rows[0];
+    }
+
+    fields.push(`updated_at = $${idx++}`);
+    values.push(new Date().toISOString());
+
+    values.push(bannerId);
+    values.push(restaurantId);
+
+    const result = await this.databaseService.query<BannerResponseDto>(
+      `UPDATE banners SET ${fields.join(', ')} 
+       WHERE id = $${idx++} AND restaurant_id = $${idx++}
+       RETURNING *`,
+      values,
+    );
+
+    if (result.rows.length === 0) {
+      throw new NotFoundException('Banner not found');
+    }
+
+    return result.rows[0];
+  }
+
+  async deleteBanner(restaurantId: string, bannerId: string): Promise<void> {
+    this.logger.log(`Deleting banner ${bannerId} for restaurant: ${restaurantId}`);
+
+    const result = await this.databaseService.query<BannerResponseDto>(
+      'DELETE FROM banners WHERE id = $1 AND restaurant_id = $2 RETURNING image_url',
+      [bannerId, restaurantId],
+    );
+
+    if (result.rows.length === 0) {
+      throw new NotFoundException('Banner not found');
+    }
+
+    // Delete image from Cloudinary
+    await this.cloudinaryService.deleteImage(result.rows[0].image_url);
+  }
+
+  async reorderBanners(restaurantId: string, bannerIds: string[]): Promise<void> {
+    this.logger.log(`Reordering banners for restaurant: ${restaurantId}`);
+
+    // Simple implementation: update each banner's order in a transaction
+    await this.databaseService.transaction(async (client) => {
+      for (let i = 0; i < bannerIds.length; i++) {
+        await client.query(
+          'UPDATE banners SET display_order = $1 WHERE id = $2 AND restaurant_id = $3',
+          [i, bannerIds[i], restaurantId],
+        );
+      }
+    });
   }
 }

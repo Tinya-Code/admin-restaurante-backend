@@ -1,11 +1,14 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpException,
   HttpStatus,
   Logger,
   Param,
+  Patch,
+  Post,
   Put,
   UseGuards,
 } from '@nestjs/common';
@@ -13,6 +16,9 @@ import { ApiBearerAuth, ApiHeader, ApiOperation, ApiParam, ApiResponse, ApiTags 
 import { ApiResponse as ApiResponseDto } from '../../common/dto/api-response.dto/api-response.dto';
 import { RestaurantSettingsResponseDto } from './dto/restaurant-settings-response.dto';
 import { UpdateRestaurantSettingsDto } from './dto/update-restaurant-settings.dto';
+import { CreateBannerDto } from './dto/create-banner.dto';
+import { UpdateBannerDto } from './dto/update-banner.dto';
+import { BannerResponseDto } from './dto/banner-response.dto';
 import { SettingsService } from './settings.service';
 import { FirebaseAuthGuard } from 'src/common/guards/firebase-auth/firebase-auth.guard';
 import { RestaurantOwnerGuard } from 'src/common/guards/restaurant-owner/restaurant-owner.guard';
@@ -160,5 +166,62 @@ export class SettingsController {
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
+  }
+
+  // --- Banners Endpoints ---
+
+  @Get('banners')
+  @ApiOperation({ summary: 'Get all banners for the restaurant' })
+  @ApiResponse({ status: 200, type: ApiResponseDto<BannerResponseDto[]> })
+  async getBanners(
+    @CurrentRestaurant() restaurantId: string,
+  ): Promise<ApiResponseDto<BannerResponseDto[]>> {
+    const data = await this.settingsService.getBanners(restaurantId);
+    return new ApiResponseDto(data, 'Banners retrieved successfully');
+  }
+
+  @Post('banners')
+  @ApiOperation({ summary: 'Create a new banner' })
+  @ApiResponse({ status: 201, type: ApiResponseDto<BannerResponseDto> })
+  async createBanner(
+    @CurrentRestaurant() restaurantId: string,
+    @Body() createDto: CreateBannerDto,
+  ): Promise<ApiResponseDto<BannerResponseDto>> {
+    const data = await this.settingsService.createBanner(restaurantId, createDto);
+    return new ApiResponseDto(data, 'Banner created successfully');
+  }
+
+  @Patch('banners/:id')
+  @ApiOperation({ summary: 'Update a banner' })
+  @ApiResponse({ status: 200, type: ApiResponseDto<BannerResponseDto> })
+  async updateBanner(
+    @CurrentRestaurant() restaurantId: string,
+    @Param('id') id: string,
+    @Body() updateDto: UpdateBannerDto,
+  ): Promise<ApiResponseDto<BannerResponseDto>> {
+    const data = await this.settingsService.updateBanner(restaurantId, id, updateDto);
+    return new ApiResponseDto(data, 'Banner updated successfully');
+  }
+
+  @Delete('banners/:id')
+  @ApiOperation({ summary: 'Delete a banner' })
+  @ApiResponse({ status: 200, description: 'Banner deleted successfully' })
+  async deleteBanner(
+    @CurrentRestaurant() restaurantId: string,
+    @Param('id') id: string,
+  ): Promise<ApiResponseDto<void>> {
+    await this.settingsService.deleteBanner(restaurantId, id);
+    return new ApiResponseDto(undefined, 'Banner deleted successfully');
+  }
+
+  @Patch('banners/reorder')
+  @ApiOperation({ summary: 'Reorder banners' })
+  @ApiResponse({ status: 200, description: 'Banners reordered successfully' })
+  async reorderBanners(
+    @CurrentRestaurant() restaurantId: string,
+    @Body('bannerIds') bannerIds: string[],
+  ): Promise<ApiResponseDto<void>> {
+    await this.settingsService.reorderBanners(restaurantId, bannerIds);
+    return new ApiResponseDto(undefined, 'Banners reordered successfully');
   }
 }
