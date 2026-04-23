@@ -52,7 +52,10 @@ export class FirebaseAuthGuard implements CanActivate {
         email: decoded.email ?? '',
         displayName: decoded.name,
         photoUrl: decoded.picture,
+        activeContext: authUser.activeContext,
+        phone: authUser.phone,
         createdAt: authUser.createdAt,
+        globalRoles: authUser.globalRoles,
       };
 
       request['user'] = user;

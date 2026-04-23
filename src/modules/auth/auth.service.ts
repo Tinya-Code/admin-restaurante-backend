@@ -44,14 +44,41 @@ export class AuthService {
       );
     }
 
-    this.logger.log(`Login successful: ${user.email}`);
+    if (!user.is_active) {
+      this.logger.warn(`Login denied — user account is inactive: ${user.email}`);
+      throw new UnauthorizedException(
+        'Your account is inactive. Please contact an administrator.',
+      );
+    }
+
+    // 3. Cargar roles globales de plataforma (super_admin, developer, support).
+    //    Retorna [] si el usuario no tiene ninguno asignado.
+    const globalRoles = await this.usersRepository.findGlobalRoles(user.id);
+
+    this.logger.log(`Login successful: ${user.email}${globalRoles.length ? ` [${globalRoles.join(', ')}]` : ''}`);
 
     return {
       id: user.id,
       email: user.email,
       displayName: user.display_name ?? undefined,
-      photoUrl: user.photo_url ?? undefined,
+      phone: user.phone ?? undefined,
+      photoUrl: firebaseUser.photoUrl,
+      activeContext: user.active_context,
       createdAt: user.created_at,
+      globalRoles,
     };
+  }
+
+  /** Membresías básicas (uso interno de guards). */
+  async getUserMemberships(userId: string) {
+    return this.usersRepository.findUserMemberships(userId);
+  }
+
+  /**
+   * Membresías con nombre de plan y estado de suscripción.
+   * Usado por el endpoint público GET /auth/memberships.
+   */
+  async getUserMembershipsWithPlan(userId: string) {
+    return this.usersRepository.findUserMembershipsWithPlan(userId);
   }
 }

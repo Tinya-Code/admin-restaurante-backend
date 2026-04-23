@@ -33,7 +33,6 @@ La propiedad `data` será un arreglo que puede mezclar resultados de productos y
   "data": [
     {
       "id": "e082f921-5371-4410-a9bf-e8b5370c8caa",
-      "restaurant_id": "803a50be-7740-4eaf-b399-2b1ad06f1406",
       "menu_id": "de9a492f-8a1c-480e-a9ac-e4ee50036de6",
       "name": "Cafetería",
       "description": "Categoría de bebidas",
@@ -45,7 +44,6 @@ La propiedad `data` será un arreglo que puede mezclar resultados de productos y
     },
     {
       "id": "eb9d9f1d-4438-44cf-848b-65202c0c06e4",
-      "restaurant_id": "803a50be-7740-4eaf-b399-2b1ad06f1406",
       "category_id": "fb279896-3589-482c-9c0c-e91ccf1f6a32",
       "name": "Café Americano",
       "description": "Bebida caliente de 8 oz",

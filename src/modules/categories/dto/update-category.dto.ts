@@ -6,10 +6,17 @@ import {
   IsInt,
   IsString,
   MaxLength,
+  Min,
+  Max,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class UpdateCategoryDto {
+  // menu_id fue eliminado intencionalmente: mover una categoría a otro menú
+  // desde el cliente puede cruzar datos entre restaurantes o sucursales distintas.
+  // Si se necesita reubicar una categoría, debe hacerse con un endpoint dedicado
+  // que valide el contexto multi-tenant correctamente.
+
   @ApiPropertyOptional({ example: 'Bebidas Calientes', maxLength: 255 })
   @IsOptional()
   @IsString()
@@ -22,14 +29,11 @@ export class UpdateCategoryDto {
   @MaxLength(500)
   description?: string;
 
-  @ApiPropertyOptional({ example: null })
-  @IsOptional()
-  @IsUUID()
-  menu_id?: string | null;
-
   @ApiPropertyOptional({ example: 2 })
   @IsOptional()
   @IsInt()
+  @Min(0)
+  @Max(9999)
   @Type(() => Number)
   display_order?: number;
 
@@ -38,4 +42,9 @@ export class UpdateCategoryDto {
   @IsBoolean()
   @Type(() => Boolean)
   is_active?: boolean;
+
+  @ApiPropertyOptional({ example: 'uuid-category-type' })
+  @IsOptional()
+  @IsUUID()
+  type_id?: string;
 }

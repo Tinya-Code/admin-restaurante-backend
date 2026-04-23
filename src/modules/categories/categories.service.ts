@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
@@ -13,60 +14,89 @@ import { CategoriesRepository } from './categories.repository';
 export class CategoriesService {
   constructor(private readonly categoriesRepository: CategoriesRepository) {}
 
-  async create(restaurantId: string, dto: CreateCategoryDto): Promise<any> {
-    const exists = await this.categoriesRepository.existsByName(
-      restaurantId,
-      dto.name,
-    );
-
-    if (exists) {
-      throw new ConflictException(
-        'Category with that name already exists for the restaurant',
+  async create(
+    branchId: string,
+    menuId: string,
+    dto: CreateCategoryDto,
+  ): Promise<any> {
+    // 1. Verificar límite del plan para la sucursal actual (branch_within_category_limit)
+    const isWithinLimit =
+      await this.categoriesRepository.isWithinPlanLimit(branchId);
+    if (!isWithinLimit) {
+      throw new ForbiddenException(
+        'Has alcanzado el límite de categorías de tu plan actual. Actualiza tu plan para añadir más.',
       );
     }
 
-    return this.categoriesRepository.create(restaurantId, dto);
+    // 2. Verificar nombre duplicado en el mismo menú (unique_category_name_per_menu)
+    const exists = await this.categoriesRepository.existsByName(
+      menuId,
+      dto.name,
+    );
+    if (exists) {
+      throw new ConflictException(
+        'Ya existe una categoría con ese nombre en este menú.',
+      );
+    }
+
+    return this.categoriesRepository.create(menuId, dto);
   }
 
-  async findAll(restaurantId: string, query: QueryCategoryDto) {
+  async findAll(menuId: string, query: QueryCategoryDto) {
     const { data, total } = await this.categoriesRepository.findAndCount(
-      restaurantId,
+      menuId,
       query,
     );
 
     const { page = 1, limit = 10 } = query;
-    return { 
-      data, 
-      meta: new PaginationMetaDto(page, limit, total, query.sort_by || 'display_order', query.order || 'ASC') 
+    return {
+      data,
+      meta: new PaginationMetaDto(
+        page,
+        limit,
+        total,
+        query.sort_by || 'display_order',
+        query.order || 'ASC',
+      ),
     };
   }
 
-  async findOne(restaurantId: string, id: string): Promise<any> {
+  /**
+   * Busca una categoría por ID y valida que pertenezca a la sucursal activa.
+   * La pertenencia se resuelve por la cadena: category → menu → branch,
+   * ya que categories NO tiene restaurant_id en el schema SaaS.
+   */
+  async findOne(branchId: string, id: string): Promise<any> {
     const category = await this.categoriesRepository.findById(id);
 
-    if (!category || category.restaurant_id !== restaurantId) {
-      throw new NotFoundException('Category not found or does not belong to your restaurant');
+    if (!category || category.branch_id !== branchId) {
+      throw new NotFoundException(
+        'Categoría no encontrada o no pertenece a tu sucursal activa.',
+      );
     }
 
     return category;
   }
 
   async update(
-    restaurantId: string,
+    branchId: string,
     id: string,
     dto: UpdateCategoryDto,
   ): Promise<any> {
-    const currentCategory = await this.findOne(restaurantId, id);
+    const currentCategory = await this.findOne(branchId, id);
 
     if (dto.name && dto.name !== currentCategory.name) {
-      const isDuplicate = await this.categoriesRepository.existsByNameExcludeId(
-        currentCategory.restaurant_id,
-        dto.name,
-        id,
-      );
+      const isDuplicate =
+        await this.categoriesRepository.existsByNameExcludeId(
+          currentCategory.menu_id,
+          dto.name,
+          id,
+        );
 
       if (isDuplicate) {
-        throw new ConflictException('Category name already in use');
+        throw new ConflictException(
+          'Ya existe una categoría con ese nombre en este menú.',
+        );
       }
     }
 
@@ -74,9 +104,8 @@ export class CategoriesService {
     return updated || currentCategory;
   }
 
-  async remove(restaurantId: string, id: string): Promise<{ message: string }> {
-    await this.findOne(restaurantId, id);
+  async remove(branchId: string, id: string): Promise<void> {
+    await this.findOne(branchId, id);
     await this.categoriesRepository.delete(id);
-    return { message: 'Category deleted successfully' };
   }
 }

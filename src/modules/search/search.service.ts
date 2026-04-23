@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import { DatabaseService } from 'src/database/database.service';
+import { DatabaseService } from '../../database/database.service';
 import { QuerySearchDto, SearchType } from './dto/query-search.dto';
-import { PaginationMetaDto } from 'src/common/dto/pagination-meta.dto/pagination-meta.dto';
+import { PaginationMetaDto } from '../../common/dto/pagination-meta.dto/pagination-meta.dto';
 
 @Injectable()
 export class SearchService {
   constructor(private readonly db: DatabaseService) {}
 
   async search(
-    restaurantId: string,
+    branchId: string,
     query: QuerySearchDto,
   ): Promise<{ data: any[]; meta: PaginationMetaDto }> {
     const { q, type = SearchType.ALL, menu_id, page = 1, limit = 10 } = query;
@@ -16,8 +16,8 @@ export class SearchService {
 
     // Products query
     if (type === SearchType.ALL || type === SearchType.PRODUCTS) {
-      const pParams: any[] = [restaurantId, `%${q}%`];
-      let pWhere = 'p.restaurant_id = $1 AND p.name ILIKE $2';
+      const pParams: any[] = [branchId, `%${q}%`];
+      let pWhere = 'p.branch_id = $1 AND p.name ILIKE $2';
 
       if (menu_id) {
         pParams.push(menu_id);
@@ -41,8 +41,8 @@ export class SearchService {
 
     // Categories query
     if (type === SearchType.ALL || type === SearchType.CATEGORIES) {
-      const cParams: any[] = [restaurantId, `%${q}%`];
-      let cWhere = 'c.restaurant_id = $1 AND c.name ILIKE $2';
+      const cParams: any[] = [branchId, `%${q}%`];
+      let cWhere = 'm.branch_id = $1 AND c.name ILIKE $2';
 
       if (menu_id) {
         cParams.push(menu_id);
@@ -52,6 +52,7 @@ export class SearchService {
       const cSql = `
         SELECT c.*
         FROM categories c
+        JOIN menus m ON m.id = c.menu_id
         WHERE ${cWhere}
       `;
       const cRes = await this.db.query(cSql, cParams);
@@ -61,6 +62,20 @@ export class SearchService {
         type: 'category'
       }));
       allItems.push(...categories);
+    }
+
+    // Combos query
+    if (type === SearchType.ALL || type === SearchType.PRODUCTS) { // Note: using PRODUCTS type or ALL for combos as they are sale items
+      const coSql = `
+        SELECT * FROM combos 
+        WHERE branch_id = $1 AND name ILIKE $2
+      `;
+      const coRes = await this.db.query(coSql, [branchId, `%${q}%`]);
+      const combos = coRes.rows.map(row => ({
+        ...row,
+        type: 'combo'
+      }));
+      allItems.push(...combos);
     }
 
     // Sort globally by name ascending

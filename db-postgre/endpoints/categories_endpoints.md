@@ -20,7 +20,8 @@ Todos los endpoints están protegidos por `FirebaseAuthGuard` y `RestaurantOwner
   "description": "Café y tés",      // Opcional, string (max 500)
   "display_order": 0,               // Opcional, int, mínimo 0 (Por defecto: 0)
   "is_active": true,                // Opcional, boolean (Por defecto: true)
-  "menu_id": "UUID-del-menu"        // OPCIONAL. Si no lo envías, se asigna al menú por defecto del restaurante.
+  "menu_id": "UUID-del-menu",        // OPCIONAL. Si no lo envías, se asigna al menú por defecto del restaurante.
+  "type_id": "UUID-del-tipo"         // OPCIONAL. FK a category_types.
 }
 ```
 
@@ -32,8 +33,8 @@ Todos los endpoints están protegidos por `FirebaseAuthGuard` y `RestaurantOwner
   "message": "Categoría creada exitosamente",
   "data": {
     "id": "abc-123-uuid...",
-    "restaurant_id": "def-456-uuid...",
     "menu_id": "ghi-789-uuid...",
+    "type_id": null,
     "name": "Bebidas Calientes",
     "description": "Café y tés",
     "display_order": 0,
@@ -72,7 +73,7 @@ Todos son **opcionales**. Ejemplo: `/categories?page=1&limit=20&is_active=true`
       "display_order": 0,
       "is_active": true,
       "menu_id": "...",
-      ...
+      "type_id": "..."
     }
   ],
   "meta": {

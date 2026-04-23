@@ -87,14 +87,14 @@ export class QueryProductDto {
 
   @IsString()
   @IsOptional()
-  @IsIn(['display_order', 'name', 'price', 'created_at'])
+  @IsIn(['name', 'price', 'created_at'])
   @ApiPropertyOptional({
     description: 'Campo para ordenar resultados',
-    default: 'display_order',
-    enum: ['display_order', 'name', 'price', 'created_at'],
-    example: 'display_order',
+    default: 'name',
+    enum: ['name', 'price', 'created_at'],
+    example: 'name',
   })
-  sort_by?: string = 'display_order';
+  sort_by?: string = 'name';
 
   @IsString()
   @IsOptional()

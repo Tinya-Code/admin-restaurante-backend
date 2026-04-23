@@ -1,11 +1,13 @@
 export class Category {
   id: string;
-  restaurant_id: string;
+  menu_id: string;
+  branch_id: string;
   name: string;
   description?: string;
-  menu_id?: string;
   display_order: number;
   is_active: boolean;
+  type_id?: string;
+  type_name?: string;
   created_at: string;
   updated_at: string;
 }

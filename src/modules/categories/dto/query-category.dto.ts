@@ -5,6 +5,7 @@ import {
   IsInt,
   Min,
   IsIn,
+  IsUUID,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -39,4 +40,8 @@ export class QueryCategoryDto {
   @IsInt()
   @Min(1)
   limit?: number;
+
+  @IsOptional()
+  @IsUUID()
+  type_id?: string;
 }

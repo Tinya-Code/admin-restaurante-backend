@@ -10,6 +10,8 @@ import {
   UsePipes,
   ValidationPipe,
   ParseUUIDPipe,
+  HttpStatus,
+  HttpCode,
 } from '@nestjs/common';
 import { MenusService } from './menus.service';
 import { CreateMenuDto } from './dto/create-menu.dto';
@@ -20,74 +22,80 @@ import {
   ApiResponse as SwaggerResponse,
   ApiBearerAuth,
   ApiParam,
-  ApiHeader,
 } from '@nestjs/swagger';
-import { FirebaseAuthGuard } from 'src/common/guards/firebase-auth/firebase-auth.guard';
-import { RestaurantOwnerGuard } from 'src/common/guards/restaurant-owner/restaurant-owner.guard';
-import { ApiResponse } from 'src/common/dto/api-response.dto/api-response.dto';
-import { CurrentRestaurant } from 'src/common/decorators/restaurant.decorator';
+import { FirebaseAuthGuard } from '../../common/guards/firebase-auth/firebase-auth.guard';
+import { RestaurantMemberGuard } from '../../common/guards/restaurant-member/restaurant-member.guard';
+import { ApiResponse } from '../../common/dto/api-response.dto/api-response.dto';
+import { CurrentBranch } from '../../common/decorators/branch.decorator';
+import { MenuResponseDto } from './dto/menu-response.dto';
 
-@ApiTags('Menus')
+@ApiTags('menus')
 @ApiBearerAuth()
-@UseGuards(FirebaseAuthGuard, RestaurantOwnerGuard)
+@UseGuards(FirebaseAuthGuard, RestaurantMemberGuard)
 @Controller('menus')
 export class MenusController {
   constructor(private readonly menusService: MenusService) {}
 
   @Post()
-  @ApiHeader({
-    name: 'x-restaurant-id',
-    required: false,
-    description: 'ID de restaurante opcional para sobrescribir el contexto automático',
-  })
-  @ApiOperation({ summary: 'Crear un nuevo menú' })
-  @SwaggerResponse({ status: 201, description: 'Menú creado' })
+  @ApiOperation({ summary: 'Crear un nuevo menú para la sucursal actual' })
+  @SwaggerResponse({ status: 201, description: 'Menú creado', type: MenuResponseDto })
+  @SwaggerResponse({ status: 409, description: 'Ya existe un menú con ese nombre en la sucursal' })
   @UsePipes(new ValidationPipe({ transform: true }))
   async create(
-    @CurrentRestaurant() restaurantId: string,
+    @CurrentBranch() branchId: string,
     @Body() createMenuDto: CreateMenuDto,
   ) {
-    const menu = await this.menusService.create(restaurantId, createMenuDto);
+    const menu = await this.menusService.create(branchId, createMenuDto);
     return new ApiResponse(menu, 'Menú creado exitosamente');
   }
 
   @Get()
-  @ApiHeader({
-    name: 'x-restaurant-id',
-    required: false,
-    description: 'ID de restaurante opcional',
-  })
-  @ApiOperation({ summary: 'Listar menús' })
-  async findAll(@CurrentRestaurant() restaurantId: string) {
-    const menus = await this.menusService.findAll(restaurantId);
+  @ApiOperation({ summary: 'Listar todos los menús de la sucursal actual' })
+  @SwaggerResponse({ status: 200, description: 'Menús obtenidos', type: [MenuResponseDto] })
+  async findAll(@CurrentBranch() branchId: string) {
+    const menus = await this.menusService.findAll(branchId);
     return new ApiResponse(menus, 'Menús obtenidos exitosamente');
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener un menú por ID' })
   @ApiParam({ name: 'id', type: String })
-  async findOne(@Param('id', new ParseUUIDPipe()) id: string) {
-    const menu = await this.menusService.findOne(id);
+  @SwaggerResponse({ status: 200, description: 'Menú obtenido', type: MenuResponseDto })
+  @SwaggerResponse({ status: 404, description: 'Menú no encontrado en esta sucursal' })
+  async findOne(
+    @CurrentBranch() branchId: string,
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ) {
+    const menu = await this.menusService.findOne(branchId, id);
     return new ApiResponse(menu, 'Menú obtenido exitosamente');
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar un menú' })
   @ApiParam({ name: 'id', type: String })
+  @SwaggerResponse({ status: 200, description: 'Menú actualizado', type: MenuResponseDto })
+  @SwaggerResponse({ status: 404, description: 'Menú no encontrado en esta sucursal' })
+  @SwaggerResponse({ status: 409, description: 'Ya existe un menú con ese nombre en la sucursal' })
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async update(
+    @CurrentBranch() branchId: string,
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() updateMenuDto: UpdateMenuDto,
   ) {
-    const menu = await this.menusService.update(id, updateMenuDto);
+    const menu = await this.menusService.update(branchId, id, updateMenuDto);
     return new ApiResponse(menu, 'Menú actualizado exitosamente');
   }
 
   @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Eliminar un menú' })
   @ApiParam({ name: 'id', type: String })
-  async remove(@Param('id', new ParseUUIDPipe()) id: string) {
-    await this.menusService.remove(id);
-    return new ApiResponse(null, 'Menú eliminado exitosamente');
+  @SwaggerResponse({ status: 204, description: 'Menú eliminado' })
+  @SwaggerResponse({ status: 404, description: 'Menú no encontrado en esta sucursal' })
+  async remove(
+    @CurrentBranch() branchId: string,
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ) {
+    await this.menusService.remove(branchId, id);
   }
 }

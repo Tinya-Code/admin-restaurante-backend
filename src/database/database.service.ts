@@ -1,6 +1,8 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { Pool, PoolClient, QueryResult } from 'pg';
 import { ConfigService } from '../config/config.service';
+import { DatabaseErrorHandler } from './utils/error-handler.util';
+import { ConnectionException } from './errors/database.exceptions';
 
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
@@ -37,8 +39,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         this.logger.error(`❌ Database connection failed. Retries left: ${retries - 1}`, error);
         retries -= 1;
         if (retries === 0) {
-          this.logger.error('🚨 Could not connect to database after multiple attempts');
-          return; // no lanzamos error para que la app no se rompa
+          const errMsg = '🚨 Could not connect to database after multiple attempts';
+          this.logger.error(errMsg);
+          throw new ConnectionException(errMsg, error);
         }
         await new Promise(res => setTimeout(res, delay));
       }
@@ -59,7 +62,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       return result;
     } catch (error) {
       this.logger.error(`Query error: ${text}`, error);
-      throw error;
+      DatabaseErrorHandler.handle(error, `query execution: ${text}`);
     }
   }
 

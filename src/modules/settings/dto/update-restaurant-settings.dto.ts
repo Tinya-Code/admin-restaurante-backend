@@ -1,45 +1,36 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsOptional, ValidateNested } from 'class-validator';
-import { BusinessConfigDto } from './config/business-config.dto';
-import { DisplayConfigDto } from './config/display-config.dto';
-import { OrderConfigDto } from './config/order-config.dto';
-import { WhatsAppConfigDto } from './config/whatsapp-config.dto';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
 
-export class UpdateRestaurantSettingsDto {
+/**
+ * DTO para actualizar el perfil básico del restaurante.
+ * Solo permite modificar campos editables de la tabla `restaurants`.
+ * La configuración operativa se gestiona en UpdateBranchSettingsDto.
+ */
+export class UpdateRestaurantProfileDto {
   @IsOptional()
-  @ValidateNested()
-  @Type(() => WhatsAppConfigDto)
-  @ApiProperty({
-    description: 'WhatsApp configuration settings',
-    type: WhatsAppConfigDto,
+  @IsString()
+  @MaxLength(200)
+  @ApiPropertyOptional({
+    description: 'Nombre del restaurante',
+    example: 'Mi Restaurante Actualizado',
   })
-  whatsapp_config?: WhatsAppConfigDto;
-
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => DisplayConfigDto)
-  @ApiProperty({
-    description: 'Display configuration settings',
-    type: DisplayConfigDto,
-  })
-  display_config?: DisplayConfigDto;
+  name?: string;
 
   @IsOptional()
-  @ValidateNested()
-  @Type(() => OrderConfigDto)
-  @ApiProperty({
-    description: 'Order configuration settings',
-    type: OrderConfigDto,
+  @IsString()
+  @MaxLength(20)
+  @ApiPropertyOptional({
+    description: 'Teléfono de contacto del restaurante',
+    example: '+51987654321',
   })
-  order_config?: OrderConfigDto;
+  phone?: string;
 
   @IsOptional()
-  @ValidateNested()
-  @Type(() => BusinessConfigDto)
-  @ApiProperty({
-    description: 'Business configuration settings',
-    type: BusinessConfigDto,
+  @IsString()
+  @MaxLength(500)
+  @ApiPropertyOptional({
+    description: 'Dirección del restaurante',
+    example: 'Av. Larco 123, Miraflores, Lima',
   })
-  business_config?: BusinessConfigDto;
+  address?: string;
 }

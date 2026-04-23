@@ -20,7 +20,6 @@ No es necesario enviar el `restaurant_id` en las URLs o cuerpos de la petición.
   "success": true,
   "message": "Products count retrieved successfully",
   "data": {
-    "restaurant_id": "def-456-uuid...",
     "total_products": 45
   }
 }
@@ -41,7 +40,6 @@ No es necesario enviar el `restaurant_id` en las URLs o cuerpos de la petición.
   "success": true,
   "message": "Categories count retrieved successfully",
   "data": {
-    "restaurant_id": "def-456-uuid...",
     "total_categories": 12
   }
 }
@@ -63,7 +61,6 @@ Ejemplo: `/statistics/products/recent?limit=10`
   "success": true,
   "message": "Recent products retrieved successfully",
   "data": {
-    "restaurant_id": "def-456-uuid...",
     "products": [
       {
         "id": "abc-123-uuid...",

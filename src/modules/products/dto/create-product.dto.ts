@@ -78,15 +78,26 @@ export class CreateProductDto {
   })
   is_available?: boolean = true;
 
-  @IsInt()
-  @Min(0)
+  @IsBoolean()
   @IsOptional()
-  @Transform(({ value }) => parseInt(value))
-  @ApiPropertyOptional({
-    description: 'Orden de visualización del producto',
-    default: 0,
-    minimum: 0,
-    type: Number,
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      return value === 'true';
+    }
+    return value;
   })
-  display_order?: number = 0;
+  @ApiPropertyOptional({
+    description: 'Indica si el producto es recomendado',
+    default: false,
+    type: Boolean,
+  })
+  is_recommended?: boolean = false;
+
+  @IsString()
+  @IsOptional()
+  @ApiPropertyOptional({
+    description: 'ID de la imagen en Cloudinary',
+    example: 'products/v12345/image',
+  })
+  cloudinary_id?: string;
 }

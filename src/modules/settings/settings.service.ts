@@ -1,11 +1,10 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
-import { RestaurantSettingsResponseDto } from './dto/restaurant-settings-response.dto';
-import { UpdateRestaurantSettingsDto } from './dto/update-restaurant-settings.dto';
-import { BannerResponseDto } from './dto/banner-response.dto';
-import { CreateBannerDto } from './dto/create-banner.dto';
-import { UpdateBannerDto } from './dto/update-banner.dto';
-import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
+import { RestaurantProfileResponseDto } from './dto/restaurant-settings-response.dto';
+import { UpdateRestaurantProfileDto } from './dto/update-restaurant-settings.dto';
+import { CloudinaryService } from '../../cloudinary/cloudinary.service';
+import { UpdateBranchSettingsDto } from './dto/update-branch-settings.dto';
+import { BranchSettingsResponseDto } from './dto/branch-settings-response.dto';
 
 @Injectable()
 export class SettingsService {
@@ -16,283 +15,147 @@ export class SettingsService {
     private readonly cloudinaryService: CloudinaryService,
   ) {}
 
-  async getBusinessSettings(
+  // --- Restaurant Profile Methods ---
+
+  async getRestaurantProfile(
     restaurantId: string,
-  ): Promise<RestaurantSettingsResponseDto> {
-    this.logger.log(
-      `Getting business settings for restaurant: ${restaurantId}`,
-    );
+  ): Promise<RestaurantProfileResponseDto> {
+    this.logger.log(`Getting profile for restaurant: ${restaurantId}`);
 
-    // First verify restaurant exists
-    const restaurantExists = await this.databaseService.findOne('restaurants', {
-      id: restaurantId,
-    });
-
-    if (!restaurantExists) {
-      throw new NotFoundException(
-        `No restaurant found with id: ${restaurantId}`,
-      );
-    }
-
-    // Get restaurant settings
-    const result =
-      await this.databaseService.query<RestaurantSettingsResponseDto>(
-        'SELECT * FROM restaurant_settings WHERE restaurant_id = $1',
-        [restaurantId],
-      );
-
-    if (result.rows.length === 0) {
-      // Return default settings if none exist
-      return {
-        restaurant_id: restaurantId,
-        whatsapp_config: {},
-        display_config: {},
-        order_config: {},
-        business_config: {},
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-    }
-
-    return result.rows[0];
-  }
-
-  async updateBusinessSettings(
-    restaurantId: string,
-    updateData: UpdateRestaurantSettingsDto,
-  ): Promise<RestaurantSettingsResponseDto> {
-    this.logger.log(
-      `Updating business settings for restaurant: ${restaurantId}`,
-    );
-
-    // First verify restaurant exists
-    const restaurantExists = await this.databaseService.findOne('restaurants', {
-      id: restaurantId,
-    });
-
-    if (!restaurantExists) {
-      throw new NotFoundException(
-        `No restaurant found with id: ${restaurantId}`,
-      );
-    }
-
-    // Check if settings already exist
-    const existingSettings = await this.databaseService.query(
-      'SELECT id FROM restaurant_settings WHERE restaurant_id = $1',
+    const result = await this.databaseService.query<RestaurantProfileResponseDto>(
+      `SELECT r.id, r.name, r.slug, r.phone, r.address, r.is_active,
+              r.created_at, r.updated_at,
+              p.name AS plan_name, p.description AS plan_description
+       FROM restaurants r
+       LEFT JOIN plans p ON p.id = r.plan_id
+       WHERE r.id = $1`,
       [restaurantId],
     );
 
-    const updateFields: string[] = [];
-    const updateValues: any[] = [];
-    let paramIndex = 1;
-
-    // Build dynamic update query based on provided fields
-    if (updateData.whatsapp_config !== undefined) {
-      updateFields.push(`whatsapp_config = $${paramIndex++}`);
-      updateValues.push(JSON.stringify(updateData.whatsapp_config));
-    }
-
-    if (updateData.display_config !== undefined) {
-      updateFields.push(`display_config = $${paramIndex++}`);
-      updateValues.push(JSON.stringify(updateData.display_config));
-    }
-
-    if (updateData.order_config !== undefined) {
-      updateFields.push(`order_config = $${paramIndex++}`);
-      updateValues.push(JSON.stringify(updateData.order_config));
-    }
-
-    if (updateData.business_config !== undefined) {
-      updateFields.push(`business_config = $${paramIndex++}`);
-      updateValues.push(JSON.stringify(updateData.business_config));
-    }
-
-    if (updateFields.length === 0) {
-      // No fields to update, return existing settings
-      return this.getBusinessSettings(restaurantId);
-    }
-
-    // Always update the updated_at timestamp
-    updateFields.push(`updated_at = $${paramIndex++}`);
-    updateValues.push(new Date().toISOString());
-
-    updateValues.push(restaurantId); // Add restaurant_id as last parameter
-
-    let result;
-
-    if (existingSettings.rows.length > 0) {
-      // Update existing settings
-      const updateQuery = `
-        UPDATE restaurant_settings 
-        SET ${updateFields.join(', ')} 
-        WHERE restaurant_id = $${paramIndex} 
-        RETURNING *
-      `;
-
-      result = await this.databaseService.query<RestaurantSettingsResponseDto>(
-        updateQuery,
-        updateValues,
-      );
-    } else {
-      // Insert new settings
-      const defaultConfigs = {
-        whatsapp_config: updateData.whatsapp_config || {},
-        display_config: updateData.display_config || {},
-        order_config: updateData.order_config || {},
-        business_config: updateData.business_config || {},
-      };
-
-      const insertQuery = `
-        INSERT INTO restaurant_settings (
-          restaurant_id, 
-          whatsapp_config, 
-          display_config, 
-          order_config, 
-          business_config,
-          created_at,
-          updated_at
-        ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7
-        ) RETURNING *
-      `;
-
-      result = await this.databaseService.query<RestaurantSettingsResponseDto>(
-        insertQuery,
-        [
-          restaurantId,
-          JSON.stringify(defaultConfigs.whatsapp_config),
-          JSON.stringify(defaultConfigs.display_config),
-          JSON.stringify(defaultConfigs.order_config),
-          JSON.stringify(defaultConfigs.business_config),
-          new Date().toISOString(),
-          new Date().toISOString(),
-        ],
-      );
+    if (result.rows.length === 0) {
+      throw new NotFoundException(`No profile found for restaurant: ${restaurantId}`);
     }
 
     return result.rows[0];
   }
 
-  // --- Banners Methods ---
+  async updateRestaurantProfile(
+    restaurantId: string,
+    updateData: UpdateRestaurantProfileDto,
+  ): Promise<RestaurantProfileResponseDto> {
+    this.logger.log(`Updating profile for restaurant: ${restaurantId}`);
 
-  async getBanners(restaurantId: string): Promise<BannerResponseDto[]> {
-    this.logger.log(`Getting banners for restaurant: ${restaurantId}`);
+    if (Object.keys(updateData).length === 0) {
+      return this.getRestaurantProfile(restaurantId);
+    }
+
+    const query = `
+      UPDATE restaurants
+      SET
+        name    = COALESCE($2, name),
+        phone   = COALESCE($3, phone),
+        address = COALESCE($4, address),
+        updated_at = NOW()
+      WHERE id = $1
+      RETURNING id, name, slug, phone, address, is_active, updated_at
+    `;
+
+    const values = [
+      restaurantId,
+      updateData.name ?? null,
+      updateData.phone ?? null,
+      updateData.address ?? null,
+    ];
+
+    const result = await this.databaseService.query<RestaurantProfileResponseDto>(query, values);
     
-    const result = await this.databaseService.query<BannerResponseDto>(
-      'SELECT * FROM banners WHERE restaurant_id = $1 ORDER BY display_order ASC, created_at DESC',
-      [restaurantId],
-    );
-    
-    return result.rows;
+    if (result.rows.length === 0) {
+      throw new NotFoundException(`No profile found for restaurant: ${restaurantId}`);
+    }
+
+    // Retornamos el perfil completo con el plan
+    return this.getRestaurantProfile(restaurantId);
   }
 
-  async createBanner(
-    restaurantId: string,
-    createDto: CreateBannerDto,
-  ): Promise<BannerResponseDto> {
-    this.logger.log(`Creating banner for restaurant: ${restaurantId}`);
+  // --- Branch Settings Methods ---
 
-    // Upload image to Cloudinary
-    const uploadResult = await this.cloudinaryService.uploadImage(
-      createDto.image_base64,
-      'banners',
-    );
+  async getBranchSettings(
+    branchId: string,
+  ): Promise<BranchSettingsResponseDto> {
+    this.logger.log(`Getting settings for branch: ${branchId}`);
 
-    const result = await this.databaseService.query<BannerResponseDto>(
-      `INSERT INTO banners (restaurant_id, image_url, description, display_order)
-       VALUES ($1, $2, $3, $4)
-       RETURNING *`,
-      [
-        restaurantId,
-        uploadResult.secure_url,
-        createDto.description || null,
-        createDto.display_order || 0,
-      ],
-    );
-
-    return result.rows[0];
-  }
-
-  async updateBanner(
-    restaurantId: string,
-    bannerId: string,
-    updateDto: UpdateBannerDto,
-  ): Promise<BannerResponseDto> {
-    this.logger.log(`Updating banner ${bannerId} for restaurant: ${restaurantId}`);
-
-    const fields: string[] = [];
-    const values: any[] = [];
-    let idx = 1;
-
-    if (updateDto.description !== undefined) {
-      fields.push(`description = $${idx++}`);
-      values.push(updateDto.description);
-    }
-    if (updateDto.display_order !== undefined) {
-      fields.push(`display_order = $${idx++}`);
-      values.push(updateDto.display_order);
-    }
-    if (updateDto.is_active !== undefined) {
-      fields.push(`is_active = $${idx++}`);
-      values.push(updateDto.is_active);
-    }
-
-    if (fields.length === 0) {
-      const current = await this.databaseService.query<BannerResponseDto>(
-        'SELECT * FROM banners WHERE id = $1 AND restaurant_id = $2',
-        [bannerId, restaurantId],
-      );
-      if (current.rows.length === 0) throw new NotFoundException('Banner not found');
-      return current.rows[0];
-    }
-
-    fields.push(`updated_at = $${idx++}`);
-    values.push(new Date().toISOString());
-
-    values.push(bannerId);
-    values.push(restaurantId);
-
-    const result = await this.databaseService.query<BannerResponseDto>(
-      `UPDATE banners SET ${fields.join(', ')} 
-       WHERE id = $${idx++} AND restaurant_id = $${idx++}
-       RETURNING *`,
-      values,
+    const result = await this.databaseService.query<BranchSettingsResponseDto>(
+      `SELECT bs.id, bs.branch_id, bs.whatsapp_config, bs.display_config,
+              bs.order_config, bs.business_config, bs.logo_url,
+              bs.logo_cloudinary_id, bs.description, bs.schedule,
+              bs.created_at, bs.updated_at
+       FROM branch_settings bs
+       WHERE bs.branch_id = $1`,
+      [branchId],
     );
 
     if (result.rows.length === 0) {
-      throw new NotFoundException('Banner not found');
+      throw new NotFoundException(`No settings found for branch: ${branchId}`);
     }
 
     return result.rows[0];
   }
 
-  async deleteBanner(restaurantId: string, bannerId: string): Promise<void> {
-    this.logger.log(`Deleting banner ${bannerId} for restaurant: ${restaurantId}`);
+  async updateBranchSettings(
+    branchId: string,
+    updateData: UpdateBranchSettingsDto,
+  ): Promise<BranchSettingsResponseDto> {
+    this.logger.log(`Updating settings for branch: ${branchId}`);
 
-    const result = await this.databaseService.query<BannerResponseDto>(
-      'DELETE FROM banners WHERE id = $1 AND restaurant_id = $2 RETURNING image_url',
-      [bannerId, restaurantId],
-    );
-
-    if (result.rows.length === 0) {
-      throw new NotFoundException('Banner not found');
+    if (Object.keys(updateData).length === 0) {
+      return this.getBranchSettings(branchId);
     }
 
-    // Delete image from Cloudinary
-    await this.cloudinaryService.deleteImage(result.rows[0].image_url);
-  }
+    const query = `
+      UPDATE branch_settings
+      SET
+        whatsapp_config    = CASE WHEN $2::jsonb IS NOT NULL
+                                  THEN whatsapp_config || $2::jsonb
+                                  ELSE whatsapp_config END,
+        display_config     = CASE WHEN $3::jsonb IS NOT NULL
+                                  THEN display_config  || $3::jsonb
+                                  ELSE display_config  END,
+        order_config       = CASE WHEN $4::jsonb IS NOT NULL
+                                  THEN order_config    || $4::jsonb
+                                  ELSE order_config    END,
+        business_config    = CASE WHEN $5::jsonb IS NOT NULL
+                                  THEN business_config || $5::jsonb
+                                  ELSE business_config END,
+        schedule           = CASE WHEN $6::jsonb IS NOT NULL
+                                  THEN schedule        || $6::jsonb
+                                  ELSE schedule        END,
+        logo_url           = COALESCE($7, logo_url),
+        logo_cloudinary_id = COALESCE($8, logo_cloudinary_id),
+        description        = COALESCE($9, description),
+        updated_at         = NOW()
+      WHERE branch_id = $1
+      RETURNING id, branch_id, whatsapp_config, display_config, order_config, business_config, logo_url, logo_cloudinary_id, description, schedule, created_at, updated_at
+    `;
 
-  async reorderBanners(restaurantId: string, bannerIds: string[]): Promise<void> {
-    this.logger.log(`Reordering banners for restaurant: ${restaurantId}`);
+    const values = [
+      branchId,
+      updateData.whatsapp_config ? JSON.stringify(updateData.whatsapp_config) : null,
+      updateData.display_config ? JSON.stringify(updateData.display_config) : null,
+      updateData.order_config ? JSON.stringify(updateData.order_config) : null,
+      updateData.business_config ? JSON.stringify(updateData.business_config) : null,
+      updateData.schedule ? JSON.stringify(updateData.schedule) : null,
+      updateData.logo_url ?? null,
+      updateData.logo_cloudinary_id ?? null,
+      updateData.description ?? null,
+    ];
 
-    // Simple implementation: update each banner's order in a transaction
-    await this.databaseService.transaction(async (client) => {
-      for (let i = 0; i < bannerIds.length; i++) {
-        await client.query(
-          'UPDATE banners SET display_order = $1 WHERE id = $2 AND restaurant_id = $3',
-          [i, bannerIds[i], restaurantId],
-        );
-      }
-    });
+    const result = await this.databaseService.query<BranchSettingsResponseDto>(query, values);
+
+    if (result.rows.length === 0) {
+      throw new NotFoundException(`No settings found for branch: ${branchId}`);
+    }
+
+    return result.rows[0];
   }
 }
+

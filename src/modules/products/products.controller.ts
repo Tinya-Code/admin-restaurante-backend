@@ -11,11 +11,8 @@ import {
   HttpStatus,
   ParseUUIDPipe,
   ValidationPipe,
-  UseInterceptors,
-  UploadedFile,
   UseGuards,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiOperation,
@@ -24,55 +21,54 @@ import {
   ApiQuery,
   ApiBadRequestResponse,
   ApiNotFoundResponse,
-  ApiConsumes,
-  ApiBody,
   ApiBearerAuth,
-  ApiHeader,
 } from '@nestjs/swagger';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { QueryProductDto } from './dto/query-product.dto';
-import { ReorderProductsDto } from './dto/reorder-products.dto';
+import { ProductResponseDto } from './dto/product-response.dto';
 import { Product } from './entities/product.entity';
-import { ApiResponse } from 'src/common/dto/api-response.dto/api-response.dto';
-import { FirebaseAuthGuard } from 'src/common/guards/firebase-auth/firebase-auth.guard';
-import { RestaurantOwnerGuard } from 'src/common/guards/restaurant-owner/restaurant-owner.guard';
-import { CurrentRestaurant } from 'src/common/decorators/restaurant.decorator';
+import { ApiResponse } from '../../common/dto/api-response.dto/api-response.dto';
+import { FirebaseAuthGuard } from '../../common/guards/firebase-auth/firebase-auth.guard';
+import { RestaurantMemberGuard } from '../../common/guards/restaurant-member/restaurant-member.guard';
+import { CurrentBranch } from '../../common/decorators/branch.decorator';
 
-@ApiTags('Products')
+@ApiTags('products')
 @ApiBearerAuth()
-@UseGuards(FirebaseAuthGuard, RestaurantOwnerGuard)
+@UseGuards(FirebaseAuthGuard, RestaurantMemberGuard)
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
+
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
     summary: 'Crear un nuevo producto',
     description:
-      'Crea un producto. (La subida de imágenes está temporalmente deshabilitada, enviar json normal).',
+      'Crea un producto en la sucursal activa. (La subida de imágenes está temporalmente deshabilitada, enviar json normal).',
   })
   @SwaggerResponse({
     status: HttpStatus.CREATED,
     description: 'Producto creado exitosamente',
-    type: Product,
+    type: ProductResponseDto,
   })
   @ApiBadRequestResponse({
     description: 'Datos inválidos o precio negativo',
   })
   @ApiNotFoundResponse({
-    description: 'Categoría no encontrada o no pertenece al restaurante',
+    description: 'Categoría no encontrada o no pertenece a esta sucursal',
+  })
+  @SwaggerResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Límite de productos del plan alcanzado',
   })
   async create(
-    @CurrentRestaurant() restaurantId: string,
+    @CurrentBranch() branchId: string,
     @Body(new ValidationPipe({ transform: true, whitelist: true }))
     createProductDto: CreateProductDto,
   ): Promise<ApiResponse<Product>> {
-    const product = await this.productsService.create(
-      restaurantId,
-      createProductDto,
-    );
+    const product = await this.productsService.create(branchId, createProductDto);
     return new ApiResponse(product, 'Producto creado exitosamente');
   }
 
@@ -81,7 +77,7 @@ export class ProductsController {
   @ApiOperation({
     summary: 'Listar productos con filtros y paginación',
     description:
-      'Obtiene una lista paginada de productos con filtros opcionales por categoría, disponibilidad y rango de precios.',
+      'Obtiene una lista paginada de productos de la sucursal activa con filtros opcionales por categoría, disponibilidad y rango de precios.',
   })
   @ApiQuery({
     name: 'category_id',
@@ -128,8 +124,8 @@ export class ProductsController {
     name: 'sort_by',
     required: false,
     description: 'Campo para ordenar',
-    enum: ['display_order', 'name', 'price', 'created_at'],
-    example: 'display_order',
+    enum: ['name', 'price', 'created_at'],
+    example: 'name',
   })
   @ApiQuery({
     name: 'order',
@@ -146,26 +142,20 @@ export class ProductsController {
     description: 'Parámetros de query inválidos',
   })
   async findAll(
-    @CurrentRestaurant() restaurantId: string,
+    @CurrentBranch() branchId: string,
     @Query(new ValidationPipe({ transform: true, whitelist: true }))
     queryDto: QueryProductDto,
   ): Promise<ApiResponse<Product[]>> {
-    const { data, meta } = await this.productsService.findAll(
-      restaurantId,
-      queryDto,
-    );
+    const { data, meta } = await this.productsService.findAll(branchId, queryDto);
     return new ApiResponse(data, 'Productos obtenidos exitosamente', meta);
   }
 
-  /**
-   * READ ONE - Obtener producto específico por ID
-   */
   @Get(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Obtener un producto por ID',
     description:
-      'Obtiene los detalles completos de un producto específico, incluyendo información de su categoría.',
+      'Obtiene los detalles completos de un producto específico de la sucursal activa, incluyendo información de su categoría.',
   })
   @ApiParam({
     name: 'id',
@@ -175,28 +165,25 @@ export class ProductsController {
   @SwaggerResponse({
     status: HttpStatus.OK,
     description: 'Producto encontrado exitosamente',
-    type: Product,
+    type: ProductResponseDto,
   })
   @ApiNotFoundResponse({
-    description: 'Producto no encontrado',
+    description: 'Producto no encontrado en esta sucursal',
   })
   async findOne(
-    @CurrentRestaurant() restaurantId: string,
+    @CurrentBranch() branchId: string,
     @Param('id', new ParseUUIDPipe()) id: string,
   ): Promise<ApiResponse<Product>> {
-    const product = await this.productsService.findOne(restaurantId, id);
+    const product = await this.productsService.findOne(branchId, id);
     return new ApiResponse(product, 'Producto obtenido exitosamente');
   }
 
-  /**
-   * UPDATE - Actualizar producto
-   */
   @Patch(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Actualizar un producto',
     description:
-      'Actualiza los campos de un producto. (La subida de imágenes está temporalmente deshabilitada).',
+      'Actualiza los campos de un producto de la sucursal activa. (La subida de imágenes está temporalmente deshabilitada).',
   })
   @ApiParam({
     name: 'id',
@@ -206,35 +193,30 @@ export class ProductsController {
   @SwaggerResponse({
     status: HttpStatus.OK,
     description: 'Producto actualizado exitosamente',
-    type: Product,
+    type: ProductResponseDto,
   })
   @ApiBadRequestResponse({
-    description:
-      'Datos inválidos, precio negativo, intento de cambiar restaurant_id o no hay campos para actualizar',
+    description: 'Datos inválidos o precio negativo',
   })
   @ApiNotFoundResponse({
-    description: 'Producto o categoría no encontrada',
+    description: 'Producto o categoría no encontrada en esta sucursal',
   })
   async update(
-    @CurrentRestaurant() restaurantId: string,
+    @CurrentBranch() branchId: string,
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body(new ValidationPipe({ transform: true, whitelist: true }))
     updateProductDto: UpdateProductDto,
   ): Promise<ApiResponse<Product>> {
-    const product = await this.productsService.update(restaurantId, id, updateProductDto);
+    const product = await this.productsService.update(branchId, id, updateProductDto);
     return new ApiResponse(product, 'Producto actualizado exitosamente');
   }
 
-  /**
-   * DELETE - Eliminar producto permanentemente
-   * Elimina el producto y su imagen de Cloudinary
-   */
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Eliminar un producto (hard delete)',
     description:
-      'Elimina permanentemente un producto de la base de datos y su imagen de Cloudinary.',
+      'Elimina permanentemente un producto de la sucursal activa y su imagen de Cloudinary.',
   })
   @ApiParam({
     name: 'id',
@@ -246,18 +228,15 @@ export class ProductsController {
     description: 'Producto eliminado exitosamente',
   })
   @ApiNotFoundResponse({
-    description: 'Producto no encontrado',
+    description: 'Producto no encontrado en esta sucursal',
   })
   async remove(
-    @CurrentRestaurant() restaurantId: string,
+    @CurrentBranch() branchId: string,
     @Param('id', new ParseUUIDPipe()) id: string,
   ): Promise<void> {
-    await this.productsService.remove(restaurantId, id);
+    await this.productsService.remove(branchId, id);
   }
 
-  /**
-   * SOFT DELETE - Deshabilitar producto
-   */
   @Patch(':id/disable')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -273,65 +252,16 @@ export class ProductsController {
   @SwaggerResponse({
     status: HttpStatus.OK,
     description: 'Producto deshabilitado exitosamente',
-    type: Product,
+    type: ProductResponseDto,
   })
   @ApiNotFoundResponse({
-    description: 'Producto no encontrado',
+    description: 'Producto no encontrado en esta sucursal',
   })
   async softRemove(
-    @CurrentRestaurant() restaurantId: string,
+    @CurrentBranch() branchId: string,
     @Param('id', new ParseUUIDPipe()) id: string,
   ): Promise<ApiResponse<Product>> {
-    const product = await this.productsService.softRemove(restaurantId, id);
+    const product = await this.productsService.softRemove(branchId, id);
     return new ApiResponse(product, 'Producto deshabilitado exitosamente');
-  }
-
-  /**
-   * REORDER - Reordenar múltiples productos en una transacción
-   */
-  @Patch('reorder/bulk')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Reordenar múltiples productos',
-    description:
-      'Actualiza el display_order de múltiples productos en una sola transacción atómica.',
-  })
-  @ApiBody({
-    type: ReorderProductsDto,
-    description: 'Array de productos con sus nuevos órdenes',
-    examples: {
-      example1: {
-        value: {
-          updates: [
-            {
-              id: '9c0b1132-c388-445d-8e47-08afe12a10ce',
-              display_order: 0,
-            },
-            {
-              id: '8b1a0021-b277-334c-7d36-97ace01b09bd',
-              display_order: 1,
-            },
-            {
-              id: '7a093110-a166-223b-6c25-86bcd00a98ac',
-              display_order: 2,
-            },
-          ],
-        },
-      },
-    },
-  })
-  @SwaggerResponse({
-    status: HttpStatus.OK,
-    description: 'Productos reordenados exitosamente',
-  })
-  @ApiBadRequestResponse({
-    description: 'Datos de reordenamiento inválidos',
-  })
-  async reorder(
-    @CurrentRestaurant() restaurantId: string,
-    @Body() reorderDto: ReorderProductsDto,
-  ): Promise<ApiResponse<any>> {
-    await this.productsService.reorder(restaurantId, reorderDto.updates);
-    return new ApiResponse(null, 'Orden de productos actualizado exitosamente');
   }
 }

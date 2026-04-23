@@ -1,88 +1,45 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 /**
- * Entidad Setting
- * Representa la configuración de un restaurante en la tabla restaurant_settings
+ * Entidad BranchSettings
+ * Refleja exactamente la tabla branch_settings del schema SaaS.
+ * branch_settings es la ÚNICA fuente de verdad de configuración;
+ * no existe herencia con restaurant_settings (tabla eliminada del schema).
  */
-export class Setting {
-  @ApiProperty({
-    description: 'ID único de la configuración (UUID)',
-    example: '9c0b1132-c388-445d-8e47-08afe12a10ce',
-  })
+export class BranchSettings {
+  @ApiProperty({ description: 'ID único del registro' })
   id: string;
 
-  @ApiProperty({
-    description: 'ID del restaurante al que pertenece la configuración',
-    example: '5a53d32f-834d-43df-a9ed-5db9b6badef9',
-  })
-  restaurant_id: string;
+  @ApiProperty({ description: 'ID de la sucursal (FK a branches.id)' })
+  branch_id: string;
 
-  @ApiProperty({
-    description: 'Configuración de WhatsApp (objeto JSON)',
-    example: {
-      whatsapp_number: '+1234567890',
-    },
-    type: 'object',
-    additionalProperties: true,
-  })
+  @ApiProperty({ description: 'Configuración de WhatsApp', type: 'object', additionalProperties: true })
   whatsapp_config: Record<string, any>;
 
-  @ApiProperty({
-    description: 'Configuración de visualización (objeto JSON)',
-    example: {
-      cart_enabled: true,
-      is_open: true,
-    },
-    type: 'object',
-    additionalProperties: true,
-  })
+  @ApiProperty({ description: 'Configuración de visualización', type: 'object', additionalProperties: true })
   display_config: Record<string, any>;
 
-  @ApiProperty({
-    description: 'Configuración de pedidos (objeto JSON)',
-    example: {},
-    type: 'object',
-    additionalProperties: true,
-  })
+  @ApiProperty({ description: 'Configuración de pedidos', type: 'object', additionalProperties: true })
   order_config: Record<string, any>;
 
-  @ApiProperty({
-    description: 'Configuración del negocio (objeto JSON)',
-    example: {
-      restaurant_name: 'Mi Restaurante',
-      greeting_message: '¡Bienvenido! ¿Qué le gustaría ordenar hoy?',
-      whatsapp_cart_template:
-        'Hola! Me gustaría ordenar:\n{cart_items}\nTotal: ${total}',
-      social_links: {
-        facebook: 'https://facebook.com/mirestaurante',
-        instagram: 'https://instagram.com/mirestaurante',
-      },
-      schedule: {
-        monday: { opening: '09:00', closing: '22:00', isOpen: true },
-        tuesday: { opening: '09:00', closing: '22:00', isOpen: true },
-        wednesday: { opening: '09:00', closing: '22:00', isOpen: true },
-        thursday: { opening: '09:00', closing: '22:00', isOpen: true },
-        friday: { opening: '09:00', closing: '23:00', isOpen: true },
-        saturday: { opening: '10:00', closing: '23:00', isOpen: true },
-        sunday: { opening: '10:00', closing: '21:00', isOpen: false },
-      },
-    },
-    type: 'object',
-    additionalProperties: true,
-  })
+  @ApiProperty({ description: 'Configuración del negocio (redes sociales, horarios, zonas de delivery)', type: 'object', additionalProperties: true })
   business_config: Record<string, any>;
 
-  @ApiProperty({
-    description: 'Fecha y hora de creación de la configuración',
-    example: '2026-02-21T15:06:00.000Z',
-    type: Date,
-  })
+  @ApiProperty({ description: 'URL pública del logo', nullable: true })
+  logo_url: string | null;
+
+  @ApiProperty({ description: 'ID del asset del logo en Cloudinary', nullable: true })
+  logo_cloudinary_id: string | null;
+
+  @ApiProperty({ description: 'Descripción de la sucursal', nullable: true })
+  description: string | null;
+
+  @ApiProperty({ description: 'Horario operativo de la sucursal', type: 'object', additionalProperties: true })
+  schedule: Record<string, any>;
+
+  @ApiProperty({ type: Date })
   created_at: Date;
 
-  @ApiProperty({
-    description: 'Fecha y hora de última actualización de la configuración',
-    example: '2026-02-21T15:06:00.000Z',
-    type: Date,
-  })
+  @ApiProperty({ type: Date })
   updated_at: Date;
 }

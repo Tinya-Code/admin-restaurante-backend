@@ -31,52 +31,48 @@ import {
   ApiBearerAuth,
   ApiHeader,
 } from '@nestjs/swagger';
-import type { Response } from 'express';
 import { CategoryResponseDto } from './dto/category-response.dto';
 import { ApiResponse } from '../../common/dto/api-response.dto/api-response.dto';
-import { FirebaseAuthGuard } from 'src/common/guards/firebase-auth/firebase-auth.guard';
-import { RestaurantOwnerGuard } from 'src/common/guards/restaurant-owner/restaurant-owner.guard';
-import { CurrentRestaurant } from 'src/common/decorators/restaurant.decorator';
-import { CurrentMenu } from 'src/common/decorators/menu.decorator';
+import { FirebaseAuthGuard } from '../../common/guards/firebase-auth/firebase-auth.guard';
+import { RestaurantMemberGuard } from '../../common/guards/restaurant-member/restaurant-member.guard';
+import { CurrentMenu } from '../../common/decorators/menu.decorator';
+import { CurrentBranch } from '../../common/decorators/branch.decorator';
 
 @ApiTags('categories')
 @ApiBearerAuth()
-@UseGuards(FirebaseAuthGuard, RestaurantOwnerGuard)
+@ApiHeader({ name: 'x-restaurant-id', required: true, description: 'UUID del restaurante activo' })
+@ApiHeader({ name: 'x-branch-id', required: false, description: 'UUID de la sucursal (default: sucursal principal)' })
+@ApiHeader({ name: 'x-menu-id', required: false, description: 'UUID del menú (default: primer menú activo)' })
+@UseGuards(FirebaseAuthGuard, RestaurantMemberGuard)
 @Controller('categories')
 export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Crear nueva categoría' })
+  @ApiOperation({ summary: 'Crear nueva categoría en el menú activo' })
   @ApiCreatedResponse({
-    description: 'Categoría creada',
+    description: 'Categoría creada exitosamente',
     type: CategoryResponseDto,
   })
-  @ApiConflictResponse({ description: 'Nombre duplicado para el restaurante' })
+  @ApiConflictResponse({ description: 'Nombre duplicado en el menú activo' })
   @ApiBadRequestResponse({ description: 'Validación fallida' })
-  @UsePipes(new ValidationPipe({ transform: true }))
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async create(
-    @CurrentRestaurant() restaurantId: string,
+    @CurrentBranch() branchId: string,
     @CurrentMenu() menuId: string,
     @Body() createCategoryDto: CreateCategoryDto,
   ) {
-    createCategoryDto.menu_id = createCategoryDto.menu_id ?? menuId;
     const category = await this.categoriesService.create(
-      restaurantId,
+      branchId,
+      menuId,
       createCategoryDto,
     );
     return new ApiResponse(category, 'Categoría creada exitosamente');
   }
 
   @Get()
-  @ApiOperation({ summary: 'Listar categorías con paginación' })
+  @ApiOperation({ summary: 'Listar categorías del menú activo con paginación' })
   @SwaggerResponse({ status: 200, description: 'Listado de categorías' })
-  @ApiQuery({
-    name: 'menu_id',
-    required: false,
-    type: String,
-    example: 'e61d4b41-4813-4be1-93db-79373f563580',
-  })
   @ApiQuery({ name: 'is_active', required: false, type: Boolean, example: true })
   @ApiQuery({
     name: 'sort_by',
@@ -84,22 +80,16 @@ export class CategoriesController {
     enum: ['display_order', 'name', 'created_at'],
     example: 'display_order',
   })
-  @ApiQuery({
-    name: 'order',
-    required: false,
-    enum: ['ASC', 'DESC'],
-    example: 'ASC',
-  })
+  @ApiQuery({ name: 'order', required: false, enum: ['ASC', 'DESC'], example: 'ASC' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
+  @ApiQuery({ name: 'type_id', required: false, type: String, example: 'uuid-category-type' })
   @UsePipes(new ValidationPipe({ transform: true }))
   async findAll(
-    @CurrentRestaurant() restaurantId: string,
     @CurrentMenu() menuId: string,
     @Query() query: QueryCategoryDto,
   ) {
-    query.menu_id = query.menu_id ?? menuId;
-    const result = await this.categoriesService.findAll(restaurantId, query);
+    const result = await this.categoriesService.findAll(menuId, query);
     return new ApiResponse(
       result.data,
       'Listado de categorías obtenido correctamente',
@@ -114,17 +104,13 @@ export class CategoriesController {
     description: 'Categoría encontrada',
     type: CategoryResponseDto,
   })
-  @ApiNotFoundResponse({ description: 'Categoría no encontrada' })
-  @ApiParam({
-    name: 'id',
-    type: String,
-    example: 'c0a80123-4567-89ab-cdef-1234567890ab',
-  })
+  @ApiNotFoundResponse({ description: 'Categoría no encontrada o no pertenece a la sucursal activa' })
+  @ApiParam({ name: 'id', type: String, example: 'c0a80123-4567-89ab-cdef-1234567890ab' })
   async findOne(
-    @CurrentRestaurant() restaurantId: string,
+    @CurrentBranch() branchId: string,
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
   ) {
-    const category = await this.categoriesService.findOne(restaurantId, id);
+    const category = await this.categoriesService.findOne(branchId, id);
     return new ApiResponse(category, 'Categoría obtenida correctamente');
   }
 
@@ -135,21 +121,17 @@ export class CategoriesController {
     description: 'Categoría actualizada',
     type: CategoryResponseDto,
   })
-  @ApiConflictResponse({ description: 'Nombre duplicado para el restaurante' })
-  @ApiNotFoundResponse({ description: 'Categoría no encontrada' })
-  @ApiParam({
-    name: 'id',
-    type: String,
-    example: 'c0a80123-4567-89ab-cdef-1234567890ab',
-  })
+  @ApiConflictResponse({ description: 'Nombre duplicado en el menú' })
+  @ApiNotFoundResponse({ description: 'Categoría no encontrada o no pertenece a la sucursal activa' })
+  @ApiParam({ name: 'id', type: String, example: 'c0a80123-4567-89ab-cdef-1234567890ab' })
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   async update(
-    @CurrentRestaurant() restaurantId: string,
+    @CurrentBranch() branchId: string,
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Body() updateCategoryDto: UpdateCategoryDto,
   ) {
     const category = await this.categoriesService.update(
-      restaurantId,
+      branchId,
       id,
       updateCategoryDto,
     );
@@ -158,18 +140,14 @@ export class CategoriesController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Eliminar una categoría' })
+  @ApiOperation({ summary: 'Eliminar una categoría (y sus productos en cascada) ' })
   @SwaggerResponse({ status: HttpStatus.NO_CONTENT, description: 'Eliminada correctamente' })
-  @ApiNotFoundResponse({ description: 'Categoría no encontrada' })
-  @ApiParam({
-    name: 'id',
-    type: String,
-    example: 'c0a80123-4567-89ab-cdef-1234567890ab',
-  })
+  @ApiNotFoundResponse({ description: 'Categoría no encontrada o no pertenece a la sucursal activa' })
+  @ApiParam({ name: 'id', type: String, example: 'c0a80123-4567-89ab-cdef-1234567890ab' })
   async remove(
-    @CurrentRestaurant() restaurantId: string,
+    @CurrentBranch() branchId: string,
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
   ): Promise<void> {
-    await this.categoriesService.remove(restaurantId, id);
+    await this.categoriesService.remove(branchId, id);
   }
 }

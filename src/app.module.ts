@@ -12,10 +12,15 @@ import { SettingsModule } from './modules/settings/settings.module';
 import { StatisticsModule } from './modules/statistics/statistics.module';
 import { SearchModule } from './modules/search/search.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { CategoryTypesModule } from './modules/category-types/category-types.module';
+import { BannersModule } from './modules/banners/banners.module';
+import { CombosModule } from './modules/combos/combos.module';
+import { PromotionsModule } from './modules/promotions/promotions.module';
+import { RestaurantTagsModule } from './modules/restaurant-tags/restaurant-tags.module';
 
 @Module({
   
-  imports: [ConfigModule, DatabaseModule, FirebaseModule, CloudinaryModule, ProductsModule, CategoriesModule, MenusModule, SettingsModule, StatisticsModule, SearchModule, AuthModule],
+  imports: [ConfigModule, DatabaseModule, FirebaseModule, CloudinaryModule, ProductsModule, CategoriesModule, MenusModule, SettingsModule, StatisticsModule, SearchModule, AuthModule, CategoryTypesModule, BannersModule, CombosModule, PromotionsModule, RestaurantTagsModule],
   controllers: [AppController],
   providers: [AppService],
 })

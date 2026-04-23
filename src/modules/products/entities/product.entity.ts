@@ -2,7 +2,9 @@ import { ApiProperty } from '@nestjs/swagger';
 
 /**
  * Entidad Product
- * Representa un producto en el menú de un restaurante
+ * Representa un producto en el menú de una sucursal.
+ * branch_id está desnormalizado intencionalmente en la tabla: el trigger
+ * fn_set_product_branch_id lo estampa automáticamente a partir de category_id.
  */
 export class Product {
   @ApiProperty({
@@ -12,10 +14,10 @@ export class Product {
   id: string;
 
   @ApiProperty({
-    description: 'ID del restaurante al que pertenece el producto',
+    description: 'ID de la sucursal a la que pertenece el producto (desnormalizado)',
     example: '5a53d32f-834d-43df-a9ed-5db9b6badef9',
   })
-  restaurant_id: string;
+  branch_id: string;
 
   @ApiProperty({
     description: 'ID de la categoría del producto',
@@ -39,8 +41,7 @@ export class Product {
   description?: string | null;
 
   @ApiProperty({
-    description:
-      'Precio del producto (viene como string desde PostgreSQL NUMERIC)',
+    description: 'Precio del producto (viene como string desde PostgreSQL NUMERIC)',
     example: '12.50',
     type: String,
   })
@@ -55,6 +56,14 @@ export class Product {
   image_url?: string | null;
 
   @ApiProperty({
+    description: 'ID del asset en Cloudinary',
+    example: 'products/v1243123/image_abc',
+    required: false,
+    nullable: true,
+  })
+  cloudinary_id?: string | null;
+
+  @ApiProperty({
     description: 'Indica si el producto está disponible para ordenar',
     example: true,
     default: true,
@@ -62,12 +71,11 @@ export class Product {
   is_available: boolean;
 
   @ApiProperty({
-    description: 'Orden de visualización del producto en el menú',
-    example: 0,
-    default: 0,
-    minimum: 0,
+    description: 'Indica si el producto es recomendado',
+    example: false,
+    default: false,
   })
-  display_order: number;
+  is_recommended: boolean;
 
   @ApiProperty({
     description: 'Fecha y hora de creación del producto',

@@ -1,20 +1,20 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CategoryResponseDto {
   @ApiProperty({ example: 'uuid-category' })
   id: string;
 
-  @ApiProperty({ example: 'uuid-restaurant' })
-  restaurant_id: string;
+  @ApiProperty({ example: 'uuid-menu' })
+  menu_id: string;
+
+  @ApiProperty({ example: 'uuid-branch', description: 'Sucursal a la que pertenece este menú' })
+  branch_id: string;
 
   @ApiProperty({ example: 'Bebidas Calientes' })
   name: string;
 
-  @ApiProperty({ example: 'Descripción' })
+  @ApiPropertyOptional({ example: 'Café, té y chocolate' })
   description?: string;
-
-  @ApiProperty({ example: null })
-  menu_id?: string | null;
 
   @ApiProperty({ example: 1 })
   display_order: number;
@@ -27,4 +27,10 @@ export class CategoryResponseDto {
 
   @ApiProperty({ example: '2026-02-10T01:00:00.000Z' })
   updated_at: string;
+
+  @ApiPropertyOptional({ example: 'uuid-category-type' })
+  type_id?: string;
+
+  @ApiPropertyOptional({ example: 'Sección del menú 1' })
+  type_name?: string;
 }

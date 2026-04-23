@@ -35,7 +35,6 @@ Todos los endpoints están protegidos por `FirebaseAuthGuard` y `RestaurantOwner
   "message": "Producto creado exitosamente",
   "data": {
     "id": "def-456-uuid...",
-    "restaurant_id": "...",
     "category_id": "...",
     "name": "Hamburguesa Doble",
     "description": "Doble carne, queso",

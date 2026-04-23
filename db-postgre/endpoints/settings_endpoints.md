@@ -37,10 +37,6 @@ Retorna la configuración completa del restaurante para el contexto actual. Si n
       "currency": "PEN",
       "currency_symbol": "S/",
       "theme": "light",
-      "colors": {
-        "primary": "#FF6B6B",
-        "secondary": "#4ECDC4"
-      },
       "language": "es",
       "show_availability_badge": true
     },
@@ -68,6 +64,7 @@ Retorna la configuración completa del restaurante para el contexto actual. Si n
         { "name": "Zona A", "fee": 5.0 },
         { "name": "Zona B", "fee": 10.0 }
       ],
+      },
       "social_media": {
         "facebook": "https://facebook.com/mirestaurante",
         "instagram": "@mirestaurante",
@@ -75,6 +72,8 @@ Retorna la configuración completa del restaurante para el contexto actual. Si n
         "twitter": "@mirestaurante"
       }
     },
+    "logo_url": "https://example.com/logo.jpg",
+    "description": "El mejor restaurante de comida peruana.",
     "created_at": "2024-02-21T15:06:00.000Z",
     "updated_at": "2024-03-29T18:00:00.000Z"
   }
@@ -123,6 +122,8 @@ Todos los campos y objetos son opcionales.
 | | `timezone` | string | Ej: `America/Lima`. Máx 50 carac. |
 | | `delivery_zones` | array | Lista de objetos `{name, fee}`. |
 | | `social_media` | object | Campos: `facebook`, `instagram`, `tiktok`, `twitter`. |
+| `logo_url` | | string | URL del logo del restaurante. |
+| `description` | | string | Descripción corta del negocio. |
 
 #### Ejemplo de Body Parcial:
 ```json
@@ -136,7 +137,9 @@ Todos los campos y objetos son opcionales.
     "colors": {
       "primary": "#00FF00"
     }
-  }
+  },
+  "logo_url": "https://images.com/mi-nuevo-logo.png",
+  "description": "Nueva descripción del restaurante"
 }
 ```
 

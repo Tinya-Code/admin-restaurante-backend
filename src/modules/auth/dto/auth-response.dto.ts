@@ -13,6 +13,21 @@ export class AuthUserDto {
   @ApiProperty({ example: 'https://...', required: false })
   photoUrl?: string;
 
+  @ApiProperty({ example: 'owner' })
+  activeContext: string;
+
+  @ApiProperty({ example: '+51987654321', required: false })
+  phone?: string;
+
   @ApiProperty()
   createdAt: Date;
+
+  @ApiProperty({
+    example: ['super_admin'],
+    description:
+      'Roles globales de plataforma asignados al usuario. Vacío si ninguno.',
+    isArray: true,
+    type: String,
+  })
+  globalRoles: string[];
 }

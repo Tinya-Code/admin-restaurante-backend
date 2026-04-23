@@ -2,13 +2,14 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
-import { CloudinaryService } from 'src/cloudinary/cloudinary.service';
+import { CloudinaryService } from '../../cloudinary/cloudinary.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { QueryProductDto } from './dto/query-product.dto';
 import { Product } from './entities/product.entity';
-import { PaginationMetaDto } from 'src/common/dto/pagination-meta.dto/pagination-meta.dto';
+import { PaginationMetaDto } from '../../common/dto/pagination-meta.dto/pagination-meta.dto';
 import { ProductsRepository } from './products.repository';
 
 @Injectable()
@@ -18,11 +19,16 @@ export class ProductsService {
     private readonly cloudinaryService: CloudinaryService,
   ) {}
 
-  async create(
-    restaurantId: string,
-    dto: CreateProductDto,
-  ): Promise<Product> {
-    await this.validateCategory(dto.category_id, restaurantId);
+  async create(branchId: string, dto: CreateProductDto): Promise<Product> {
+    // Pre-verificación del límite antes del INSERT para dar feedback inmediato
+    const isWithinLimit = await this.productsRepository.isWithinProductLimit(branchId);
+    if (!isWithinLimit) {
+      throw new ForbiddenException(
+        'Has alcanzado el límite de productos de tu plan actual. Actualiza tu plan para añadir más.',
+      );
+    }
+
+    await this.validateCategoryForBranch(dto.category_id, branchId);
 
     // DESHABILITADO TEMPORALMENTE: Se manejarán imágenes en el futuro
     let image_url: string | null = null;
@@ -39,50 +45,59 @@ export class ProductsService {
         price: price?.toString(),
         // image_url, // No guardar image_url por ahora
       };
-      return await this.productsRepository.create(restaurantId, payload);
-    } catch (error) {
+      return await this.productsRepository.create(payload);
+    } catch (err: any) {
       /*
       if (image_url) await this.cloudinaryService.deleteImage(image_url);
       */
-      if (error.code === '23514') {
+      // Segunda línea de defensa: el trigger trg_check_product_limit puede
+      // rechazar el INSERT si la pre-verificación fue eludida
+      if (err?.message?.startsWith('PLAN_LIMIT_EXCEEDED:')) {
+        throw new ForbiddenException(
+          err.message.replace('PLAN_LIMIT_EXCEEDED: ', ''),
+        );
+      }
+      if (err.code === '23514') {
         throw new BadRequestException('El precio debe ser mayor o igual a 0');
       }
-      throw error;
+      throw err;
     }
   }
 
   async findAll(
-    restaurantId: string,
+    branchId: string,
     queryDto: QueryProductDto,
   ): Promise<{ data: Product[]; meta: PaginationMetaDto }> {
     const { data, total } = await this.productsRepository.findAndCount(
-      restaurantId,
+      branchId,
       queryDto,
     );
 
-    const { page = 1, limit = 10, sort_by = 'display_order', order = 'ASC' } = queryDto;
+    const { page = 1, limit = 10, sort_by = 'name', order = 'ASC' } = queryDto;
     const meta = new PaginationMetaDto(page, limit, total, sort_by, order);
 
     return { data, meta };
   }
 
-  async findOne(restaurantId: string, id: string): Promise<Product> {
-    const product = await this.productsRepository.findById(id);
-    if (!product || product.restaurant_id !== restaurantId) {
-      throw new NotFoundException(`Producto con ID ${id} no encontrado o no pertenece al restaurante`);
+  async findOne(branchId: string, id: string): Promise<Product> {
+    const product = await this.productsRepository.findByIdAndBranch(id, branchId);
+    if (!product) {
+      throw new NotFoundException(
+        `Producto con ID ${id} no encontrado en esta sucursal.`,
+      );
     }
     return product;
   }
 
   async update(
-    restaurantId: string,
+    branchId: string,
     id: string,
     dto: UpdateProductDto,
   ): Promise<Product> {
-    const existingProduct = await this.findOne(restaurantId, id);
+    await this.findOne(branchId, id);
 
     if (dto.category_id) {
-      await this.validateCategory(dto.category_id, existingProduct.restaurant_id);
+      await this.validateCategoryForBranch(dto.category_id, branchId);
     }
 
     // DESHABILITADO TEMPORALMENTE: Se manejarán imágenes en el futuro
@@ -104,42 +119,45 @@ export class ProductsService {
       updatedFields.updated_at = new Date();
 
       return await this.productsRepository.update(id, updatedFields);
-    } catch (error) {
+    } catch (err: any) {
       /*
       if (new_image_url) await this.cloudinaryService.deleteImage(new_image_url);
       */
-      if (error.code === '23514') {
+      if (err.code === '23514') {
         throw new BadRequestException('El precio debe ser mayor o igual a 0');
       }
-      throw error;
+      throw err;
     }
   }
 
-  async remove(restaurantId: string, id: string): Promise<void> {
-    const product = await this.findOne(restaurantId, id);
+  async remove(branchId: string, id: string): Promise<void> {
+    const product = await this.findOne(branchId, id);
     if (product.image_url) {
       await this.cloudinaryService.deleteImage(product.image_url);
     }
     await this.productsRepository.delete(id);
   }
 
-  async softRemove(restaurantId: string, id: string): Promise<Product> {
-    await this.findOne(restaurantId, id);
+  async softRemove(branchId: string, id: string): Promise<Product> {
+    await this.findOne(branchId, id);
     return this.productsRepository.update(id, { is_available: false });
   }
 
-  async reorder(
-    restaurantId: string,
-    updates: Array<{ id: string; display_order: number }>,
+  /**
+   * Verifica que la categoría pertenece a la sucursal activa (via menu_id).
+   * Impide crear o mover productos a categorías de otras sucursales.
+   */
+  private async validateCategoryForBranch(
+    categoryId: string,
+    branchId: string,
   ): Promise<void> {
-    await this.productsRepository.reorderBulk(restaurantId, updates);
-  }
-
-  private async validateCategory(categoryId: string, restaurantId: string): Promise<void> {
-    const isValid = await this.productsRepository.isCategoryValidForRestaurant(categoryId, restaurantId);
+    const isValid = await this.productsRepository.isCategoryValidForBranch(
+      categoryId,
+      branchId,
+    );
     if (!isValid) {
       throw new NotFoundException(
-        `Categoría con ID ${categoryId} no encontrada o no pertenece al restaurante`,
+        `Categoría con ID ${categoryId} no encontrada o no pertenece a esta sucursal.`,
       );
     }
   }
